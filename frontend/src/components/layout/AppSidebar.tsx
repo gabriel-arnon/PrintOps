@@ -28,13 +28,13 @@ interface AppSidebarProps {
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, enabled: true },
-  { title: "Impressoras", url: "/printers", icon: Printer, enabled: true },
-  { title: "Relatórios", url: "/reports", icon: BarChart3, enabled: true },
+  { title: "Impressoras", url: "/printers", icon: Printer, enabled: false },
+  { title: "Relatórios", url: "/reports", icon: BarChart3, enabled: false },
 ] as const;
 
 const systemItems = [
-  { title: "Alertas", url: "/alerts", icon: Bell, enabled: true, badgeKey: "alerts" },
-  { title: "Configurações", url: "/settings", icon: Settings, enabled: true },
+  { title: "Alertas", url: "/alerts", icon: Bell, enabled: false, badgeKey: "alerts" },
+  { title: "Configurações", url: "/settings", icon: Settings, enabled: false },
 ] as const;
 
 export function AppSidebar({ alertCount = 0 }: AppSidebarProps) {
