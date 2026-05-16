@@ -4,7 +4,8 @@ import { getTonerLevel } from "@/lib/toner";
 
 /** Shared observability look — calm grids, muted axes, translucent tooltips */
 export const chartMargins = {
-  bar: { top: 16, right: 12, left: 4, bottom: 10 },
+  /** Extra bottom space for tilted X labels (toner + image unit charts only) */
+  bar: { top: 16, right: 12, left: 4, bottom: 22 },
   barVertical: { top: 8, right: 18, left: 4, bottom: 8 },
   line: { top: 18, right: 14, left: 2, bottom: 10 },
 } as const;

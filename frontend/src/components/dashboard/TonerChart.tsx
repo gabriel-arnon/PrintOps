@@ -33,13 +33,10 @@ export function TonerChart({ printers }: { printers: Printer[] }) {
 
   return (
     <Card className="animate-slide-up border-border/60 bg-card/80">
-      <CardHeader className="space-y-1.5 pb-3">
+      <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold tracking-tight">
           Nível de toner por impressora
         </CardTitle>
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          Verde &gt; 40% · Amarelo 20–40% · Vermelho &lt; 20%
-        </p>
       </CardHeader>
       <CardContent className="h-72 px-1 pb-3 pt-0">
         {data.length === 0 ? (
@@ -49,7 +46,11 @@ export function TonerChart({ printers }: { printers: Printer[] }) {
           />
         ) : (
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={chartMargins.bar}>
+            <BarChart
+              data={data}
+              margin={chartMargins.bar}
+              barCategoryGap="10%"
+            >
               <CartesianGrid {...chartGrid} vertical={false} />
               <XAxis
                 dataKey="name"
@@ -59,8 +60,9 @@ export function TonerChart({ printers }: { printers: Printer[] }) {
                 interval={0}
                 angle={-20}
                 textAnchor="end"
-                height={58}
-                dy={6}
+                tickMargin={12}
+                height={64}
+                dy={8}
               />
               <YAxis
                 tick={axisTickY}
