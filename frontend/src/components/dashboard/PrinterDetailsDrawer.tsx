@@ -15,8 +15,21 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RelativeTime } from "@/components/RelativeTime";
+import { ChartEmptyState } from "@/components/dashboard/ChartEmptyState";
 import { StatusBadge } from "./StatusBadge";
 import { cn } from "@/lib/utils";
+import {
+  axisTickX,
+  axisTickY,
+  chartAnimation,
+  chartGrid,
+  chartMargins,
+  historyLineColors,
+  lineTooltipCursor,
+  tooltipContentStyle,
+  tooltipItemStyle,
+  tooltipLabelStyle,
+} from "@/lib/chart-theme";
 import { getTonerLevel, tonerTextClass } from "@/lib/toner";
 import { formatRelativeToNow, formatShortClockTime } from "@/lib/time";
 import {
@@ -86,9 +99,11 @@ function HistoryChart({
 }) {
   if (data.length < 2) {
     return (
-      <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-border/60 text-xs text-muted-foreground">
-        Sem histórico suficiente
-      </div>
+      <ChartEmptyState
+        className="min-h-[160px] py-8 ring-border/20"
+        title="Série temporal indisponível"
+        hint="São necessárias pelo menos duas leituras para traçar a tendência neste intervalo."
+      />
     );
   }
   const formatted = data.map((d) => ({
@@ -96,47 +111,52 @@ function HistoryChart({
     time: formatShortClockTime(d.created_at),
     relative: formatRelativeToNow(d.created_at),
   }));
+  const valueLabel = dataKey === "toner_percent" ? "Toner" : "Unidade de imagem";
+
   return (
     <div className="h-40 w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={formatted} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-          <CartesianGrid stroke="oklch(1 0 0 / 0.06)" vertical={false} />
+        <LineChart data={formatted} margin={chartMargins.line}>
+          <CartesianGrid {...chartGrid} vertical={false} />
           <XAxis
             dataKey="time"
-            tick={{ fontSize: 10, fill: "oklch(0.7 0 0)" }}
+            tick={axisTickX}
             tickLine={false}
             axisLine={false}
-            minTickGap={24}
+            minTickGap={28}
+            dy={4}
           />
-          <YAxis
-            domain={[0, 100]}
-            tick={{ fontSize: 10, fill: "oklch(0.7 0 0)" }}
-            tickLine={false}
-            axisLine={false}
-            width={32}
-          />
+          <YAxis domain={[0, 100]} tick={axisTickY} tickLine={false} axisLine={false} width={36} />
           <Tooltip
-            cursor={{ stroke: "oklch(1 0 0 / 0.1)" }}
-            contentStyle={{
-              background: "oklch(0.18 0 0)",
-              border: "1px solid oklch(1 0 0 / 0.1)",
-              borderRadius: 8,
-              fontSize: 12,
-            }}
+            cursor={lineTooltipCursor}
+            animationDuration={180}
+            contentStyle={tooltipContentStyle}
+            labelStyle={tooltipLabelStyle}
+            itemStyle={tooltipItemStyle}
             labelFormatter={(_l, payload) => {
               const p = payload?.[0]?.payload as { relative?: string } | undefined;
               return p?.relative ?? "";
             }}
-            labelStyle={{ color: "oklch(0.75 0 0)" }}
-            formatter={(v: number) => [`${v}%`, "Nível"]}
+            formatter={(v: number) => [`${v}%`, valueLabel]}
+            wrapperStyle={{ outline: "none" }}
           />
           <Line
             type="monotone"
             dataKey={dataKey}
             stroke={color}
-            strokeWidth={2}
+            strokeWidth={1.75}
+            strokeLinecap="round"
+            strokeLinejoin="round"
             dot={false}
-            isAnimationActive={false}
+            activeDot={{
+              r: 3.5,
+              strokeWidth: 1,
+              stroke: "oklch(0.22 0.016 250 / 0.75)",
+              fill: color,
+              fillOpacity: 0.92,
+            }}
+            animationDuration={chartAnimation.lineDuration}
+            animationEasing={chartAnimation.easing}
           />
         </LineChart>
       </ResponsiveContainer>
@@ -289,7 +309,7 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
                   <HistoryChart
                     data={limitedHistory}
                     dataKey="toner_percent"
-                    color="oklch(0.72 0.17 152)"
+                    color={historyLineColors.toner}
                   />
                 </div>
                 <div>
@@ -297,7 +317,7 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
                   <HistoryChart
                     data={limitedHistory}
                     dataKey="image_unit_percent"
-                    color="oklch(0.68 0.18 240)"
+                    color={historyLineColors.imageUnit}
                   />
                 </div>
               </div>

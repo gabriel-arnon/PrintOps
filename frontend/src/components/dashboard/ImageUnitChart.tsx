@@ -1,15 +1,30 @@
-import { Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Cell,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Wrench } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getTonerLevel } from "@/lib/toner";
-import type { Printer } from "@/lib/api";
 
-const colorFor = (p: number) => {
-  const l = getTonerLevel(p);
-  if (l === "ok") return "oklch(0.72 0.17 152)";
-  if (l === "warn") return "oklch(0.78 0.16 75)";
-  return "oklch(0.62 0.22 25)";
-};
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartEmptyState } from "@/components/dashboard/ChartEmptyState";
+import type { Printer } from "@/lib/api";
+import {
+  axisTickX,
+  axisTickY,
+  chartAnimation,
+  barFillForPercent,
+  barTooltipCursor,
+  chartGrid,
+  chartMargins,
+  tooltipContentStyle,
+  tooltipItemStyle,
+  tooltipLabelStyle,
+} from "@/lib/chart-theme";
 
 export function ImageUnitChart({ printers }: { printers: Printer[] }) {
   const data = printers.map((p) => ({
@@ -19,56 +34,67 @@ export function ImageUnitChart({ printers }: { printers: Printer[] }) {
 
   return (
     <Card className="animate-slide-up border-border/60 bg-card/80">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-          <Wrench className="h-4 w-4 text-primary" />
+      <CardHeader className="space-y-1.5 pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold tracking-tight">
+          <Wrench className="h-4 w-4 shrink-0 text-primary/90" strokeWidth={1.75} />
           Saúde da Unidade de Imagem
         </CardTitle>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-xs leading-relaxed text-muted-foreground">
           Verde &gt; 40% · Amarelo 20–40% · Vermelho &lt; 20%
         </p>
       </CardHeader>
-      <CardContent className="h-72 pt-2">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
-            <CartesianGrid stroke="oklch(0.30 0.018 250)" strokeDasharray="3 3" vertical={false} />
-            <XAxis
-              dataKey="name"
-              tick={{ fill: "oklch(0.68 0.02 250)", fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              interval={0}
-              angle={-20}
-              textAnchor="end"
-              height={60}
-            />
-            <YAxis
-              tick={{ fill: "oklch(0.68 0.02 250)", fontSize: 11 }}
-              tickLine={false}
-              axisLine={false}
-              domain={[0, 100]}
-              unit="%"
-            />
-            <Tooltip
-              cursor={{ fill: "oklch(0.27 0.018 250 / 0.4)" }}
-              contentStyle={{
-                background: "oklch(0.22 0.015 250)",
-                border: "1px solid oklch(0.30 0.018 250)",
-                borderRadius: 8,
-                fontSize: 12,
-                color: "white",
-              }}
-              labelStyle={{ color: "white" }}
-              itemStyle={{ color: "white" }}
-              formatter={(v: number) => [`${v}%`, "Unidade de Imagem"]}
-            />
-            <Bar dataKey="image_unit" radius={[6, 6, 0, 0]}>
-              {data.map((d, i) => (
-                <Cell key={i} fill={colorFor(d.image_unit)} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+      <CardContent className="h-72 px-1 pb-3 pt-0">
+        {data.length === 0 ? (
+          <ChartEmptyState
+            title="Painel sem amostras"
+            hint="Adicione impressoras ou aguarde a primeira varredura para visualizar o desgaste da unidade de imagem."
+          />
+        ) : (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} margin={chartMargins.bar}>
+              <CartesianGrid {...chartGrid} vertical={false} />
+              <XAxis
+                dataKey="name"
+                tick={axisTickX}
+                tickLine={false}
+                axisLine={false}
+                interval={0}
+                angle={-20}
+                textAnchor="end"
+                height={58}
+                dy={6}
+              />
+              <YAxis
+                tick={axisTickY}
+                tickLine={false}
+                axisLine={false}
+                domain={[0, 100]}
+                unit="%"
+                width={34}
+              />
+              <Tooltip
+                cursor={barTooltipCursor}
+                animationDuration={200}
+                contentStyle={tooltipContentStyle}
+                labelStyle={tooltipLabelStyle}
+                itemStyle={tooltipItemStyle}
+                formatter={(value: number) => [`${value}%`, "Unidade de imagem"]}
+                wrapperStyle={{ outline: "none" }}
+              />
+              <Bar
+                dataKey="image_unit"
+                radius={[5, 5, 0, 0]}
+                maxBarSize={52}
+                animationDuration={chartAnimation.barDuration}
+                animationEasing={chartAnimation.easing}
+              >
+                {data.map((entry, i) => (
+                  <Cell key={i} fill={barFillForPercent(entry.image_unit)} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </CardContent>
     </Card>
   );
