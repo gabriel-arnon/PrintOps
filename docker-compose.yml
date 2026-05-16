@@ -1,0 +1,35 @@
+services:
+
+  postgres:
+    image: postgres:16
+
+    container_name: print_postgres
+
+    restart: always
+
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: printmonitor
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: ./backend
+
+    container_name: print_backend
+
+    restart: always
+
+    ports:
+      - "8000:8000"
+
+    depends_on:
+      - postgres
+
+volumes:
+  postgres_data:

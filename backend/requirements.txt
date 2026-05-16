@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+apscheduler
+
+pysnmp==4.4.12
+pyasn1==0.4.8
+
+python-jose
+passlib[bcrypt]
+python-multipart
+bcrypt==4.0.1
