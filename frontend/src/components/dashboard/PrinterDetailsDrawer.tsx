@@ -15,6 +15,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { RelativeTime } from "@/components/RelativeTime";
+import { StatusBadge } from "./StatusBadge";
 import { cn } from "@/lib/utils";
 import { getTonerLevel, tonerTextClass } from "@/lib/toner";
 import { formatRelativeToNow, formatShortClockTime } from "@/lib/time";
@@ -22,7 +23,6 @@ import {
   fetchPrinterDetails,
   fetchPrinterHistory,
   fetchPrinterStats,
-  type DetailedPrinterStatus,
   type PrinterHistoryPoint,
 } from "@/lib/api";
 
@@ -34,64 +34,6 @@ interface Props {
 }
 
 const nf = new Intl.NumberFormat("pt-BR");
-
-const statusMap: Record<
-  DetailedPrinterStatus,
-  { label: string; color: string; dot: string; ring: string }
-> = {
-  idle: {
-    label: "Ocioso",
-    color: "text-[oklch(0.82_0.17_152)]",
-    dot: "bg-[oklch(0.72_0.17_152)]",
-    ring: "border-[oklch(0.72_0.17_152/0.4)] bg-[oklch(0.72_0.17_152/0.12)]",
-  },
-  online: {
-    label: "Online",
-    color: "text-[oklch(0.82_0.17_152)]",
-    dot: "bg-[oklch(0.72_0.17_152)]",
-    ring: "border-[oklch(0.72_0.17_152/0.4)] bg-[oklch(0.72_0.17_152/0.12)]",
-  },
-  printing: {
-    label: "Imprimindo",
-    color: "text-[oklch(0.78_0.16_240)]",
-    dot: "bg-[oklch(0.68_0.18_240)]",
-    ring: "border-[oklch(0.68_0.18_240/0.4)] bg-[oklch(0.68_0.18_240/0.12)]",
-  },
-  warmup: {
-    label: "Aquecendo",
-    color: "text-[oklch(0.82_0.16_75)]",
-    dot: "bg-[oklch(0.78_0.16_75)]",
-    ring: "border-[oklch(0.78_0.16_75/0.4)] bg-[oklch(0.78_0.16_75/0.12)]",
-  },
-  offline: {
-    label: "Offline",
-    color: "text-[oklch(0.78_0.20_25)]",
-    dot: "bg-[oklch(0.62_0.22_25)]",
-    ring: "border-[oklch(0.62_0.22_25/0.4)] bg-[oklch(0.62_0.22_25/0.12)]",
-  },
-  unknown: {
-    label: "Desconhecido",
-    color: "text-muted-foreground",
-    dot: "bg-muted-foreground",
-    ring: "border-border bg-muted/30",
-  },
-};
-
-function StatusPill({ status }: { status: DetailedPrinterStatus }) {
-  const s = statusMap[status] ?? statusMap.unknown;
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-sm font-medium",
-        s.ring,
-        s.color,
-      )}
-    >
-      <span className={cn("h-2 w-2 rounded-full", s.dot)} />
-      {s.label}
-    </span>
-  );
-}
 
 function ConsumableBar({ label, percent }: { label: string; percent: number }) {
   const clamped = Math.max(0, Math.min(100, percent));
@@ -262,7 +204,7 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
                 {d.model} · <span className="font-mono">{d.ip}</span>
               </div>
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                <StatusPill status={d.status} />
+                <StatusBadge status={d.status} size="md" />
                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" /> Uptime: {d.uptime}
                 </span>
