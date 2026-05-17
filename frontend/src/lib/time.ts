@@ -32,6 +32,54 @@ export function subscribeRelativeTimeLive(onStoreChange: () => void) {
   };
 }
 
+export function formatRelativeOperationalTime(
+
+  date: string | Date
+
+) {
+
+  const now = new Date();
+
+  const target = new Date(date);
+
+  const diffMs = now.getTime() - target.getTime();
+
+  const diffMinutes = Math.floor(
+    diffMs / 1000 / 60
+  );
+
+  if (diffMinutes < 1) {
+
+    return "agora";
+
+  }
+
+  if (diffMinutes < 60) {
+
+    return `há ${diffMinutes} min`;
+
+  }
+
+  const diffHours = Math.floor(
+    diffMinutes / 60
+  );
+
+  if (diffHours < 24) {
+
+    return `há ${diffHours}h`;
+
+  }
+
+  const diffDays = Math.floor(
+    diffHours / 24
+  );
+
+  return `há ${diffDays}d`;
+
+}
+
+
+
 export function getRelativeTimeLiveSnapshot(): number {
   return liveClockTick;
 }

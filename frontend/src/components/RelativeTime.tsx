@@ -1,12 +1,14 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { cn } from "@/lib/utils";
 import {
+
   formatAbsolutePtBr,
-  formatRelativeToNow,
+  formatRelativeOperationalTime,
   getRelativeTimeLiveSnapshot,
   parseTimeInput,
   subscribeRelativeTimeLive,
 } from "@/lib/time";
+
 
 export interface RelativeTimeProps {
   /** Instant to display relative to now */
@@ -33,7 +35,8 @@ export function RelativeTime({ date, live = false, className }: RelativeTimeProp
 
   useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const label = formatRelativeToNow(date);
+  const parsedDate = parseTimeInput(date);  
+  const label = parsedDate ? formatRelativeOperationalTime(parsedDate) : "";
 
   const title = formatAbsolutePtBr(date);
 
