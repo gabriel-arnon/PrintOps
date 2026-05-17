@@ -18,7 +18,7 @@ def get_snmp_data(
     oid,
 
     timeout=2,
-    retries=1
+    retries=2
 
 ):
 
@@ -74,7 +74,7 @@ def get_multiple_snmp_data(
     oids,
 
     timeout=0.5,
-    retries=0
+    retries=1
 
 ):
 
