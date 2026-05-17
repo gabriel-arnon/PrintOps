@@ -108,7 +108,7 @@ export function DiscoverPrintersDialog() {
           Escanear Rede
         </Button>
       </DialogTrigger>
-      <DialogContent className="border-border/60 bg-card sm:max-w-3xl">
+      <DialogContent className=" border-border/60 bg-card/95 backdrop-blur-xl shadow-2xl sm:max-w-5xl " >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Radar className="h-4 w-4 text-primary" />
@@ -173,15 +173,15 @@ export function DiscoverPrintersDialog() {
                 Escanear novamente
               </Button>
             </div>
-            <div className="max-h-[420px] overflow-auto rounded-md border border-border/60">
+            <div className=" max-h-[420px] overflow-auto rounded-md border border-border/60 scrollbar-thin scrollbar-thumb-zinc-700 scrollbar-track-transparent " >
               <Table>
                 <TableHeader>
                   <TableRow className="border-border/60 hover:bg-transparent">
-                    <TableHead>Modelo</TableHead>
-                    <TableHead>IP</TableHead>
-                    <TableHead className="hidden md:table-cell">Serial</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ação</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider text-zinc-500">Modelo</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider text-zinc-500"> IP </TableHead>
+                    <TableHead className="hidden md:table-cell text-[11px] uppercase tracking-wider text-zinc-500">Serial</TableHead>
+                    <TableHead className="text-[11px] uppercase tracking-wider text-zinc-500">Status</TableHead>
+                    <TableHead className="text-right text-[11px] uppercase tracking-wider text-zinc-500">Ação</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -203,13 +203,13 @@ export function DiscoverPrintersDialog() {
                     results.map((p) => (
                       <TableRow
                         key={p.ip}
-                        className="border-border/40 transition-colors hover:bg-muted/30"
+                        className="h14 border-border/40 transition-all duration-200 hover:bg-cyan-500/5 hover:border-cyan-500/20 "
                       >
                         <TableCell className="font-medium">{p.model}</TableCell>
-                        <TableCell className="font-mono text-xs tabular-nums">
+                        <TableCell className=" font-mono text-sm tabular-nums text-zinc-100 ">
                           {p.ip}
                         </TableCell>
-                        <TableCell className="hidden font-mono text-[10px] uppercase text-muted-foreground md:table-cell">
+                        <TableCell className="hidden font-mono text-[10px] uppercase text-zinc-500 md:table-cell">
                           {p.serial}
                         </TableCell>
                         <TableCell>
@@ -217,13 +217,13 @@ export function DiscoverPrintersDialog() {
                             className={cn(
                               "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium",
                               p.already_added
-                                ? "border-primary/40 bg-primary/10 text-primary"
+                                ? "border-primary/40 bg-primary/10 text-primary "
                                 : "border-[oklch(0.72_0.17_152/0.4)] bg-[oklch(0.72_0.17_152/0.12)] text-[oklch(0.82_0.17_152)]",
                             )}
                           >
                             {p.already_added ? (
                               <>
-                                <Check className="h-3 w-3" /> Monitorada
+                                <Check className="h-3 w-3 " /> Monitorada
                               </>
                             ) : (
                               <>
@@ -237,14 +237,14 @@ export function DiscoverPrintersDialog() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button
+                          <Button 
                             size="sm"
-                            variant={p.already_added ? "outline" : "default"}
+                            variant={p.already_added ?   "secondary" : "default"}
                             disabled={
                               p.already_added || addingIp === p.ip
                             }
                             onClick={() => addMutation.mutate(p)}
-                            className="h-8 gap-1.5"
+                            className={cn( "h-8 gap-1.5", p.already_added && "opacity-70" )}
                           >
                             {addingIp === p.ip ? (
                               <>

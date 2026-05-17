@@ -1,3 +1,5 @@
+from pysnmp.hlapi import *
+
 from concurrent.futures import (
     ThreadPoolExecutor,
     as_completed
@@ -984,7 +986,7 @@ def printer_details(
 
         uptime_raw = get_snmp_data(
             printer.ip,
-            "1.3.6.1.2.1.1.3.0"
+            "1.3.6.1.2.1.25.1.1.0"
         )
 
         uptime = parse_uptime(
@@ -1006,16 +1008,75 @@ def printer_details(
 
         hostname = "N/A"
 
+        
     try:
 
-        mac = get_snmp_data(
+        system_info = get_snmp_data(
             printer.ip,
-            "1.3.6.1.2.1.2.2.1.6.2"
+            "1.3.6.1.2.1.1.1.0"
+        )
+
+        firmware = "N/A"
+
+        parts = system_info.split(";")
+
+        for part in parts:
+
+            part = part.strip()
+
+            if part.startswith("V"):
+
+                firmware = part
+                break
+
+    except Exception:
+
+        firmware = "N/A"
+        
+    try:
+
+        raw_mac = get_snmp_data(
+            printer.ip,
+            "1.3.6.1.2.1.2.2.1.6.1"
+        )
+
+        mac = ":".join(
+
+            f"{ord(char):02X}"
+
+            for char in raw_mac
+
         )
 
     except Exception:
 
         mac = "N/A"
+
+         
+    try:
+
+        interface_status_raw = int(
+
+            get_snmp_data(
+                printer.ip,
+                "1.3.6.1.2.1.2.2.1.8.1"
+            )
+
+        )
+
+        interface_status = (
+            "up"
+            if interface_status_raw == 1
+            else "down"
+        )
+
+    except Exception:
+
+        interface_status = "unknown"
+    
+
+
+
 
     result = {
 
@@ -1037,14 +1098,20 @@ def printer_details(
 
         "mac": mac,
 
-        "firmware": printer.model,
+        "firmware": firmware,
 
         "toner_percent": latest_metric.toner_percent if latest_metric else 0,
 
         "image_unit_percent": latest_metric.image_unit_percent if latest_metric else 0,
 
-        "pages": latest_metric.pages if latest_metric else 0
+        "pages": latest_metric.pages if latest_metric else 0,
 
+        "last_update": latest_metric.created_at if latest_metric else None,
+
+        "interface_status": interface_status,
+        
+
+    
     }
 
     db.close()
@@ -1107,6 +1174,131 @@ def printer_history(
 
     return result
 
+@app.get("/test-snmp/{printer_id}")
+def test_snmp(
+
+    printer_id: int,
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    printer = (
+        db.query(Printer)
+        .filter(Printer.id == printer_id)
+        .first()
+    )
+
+    results = {}
+
+    oids = [
+
+        "1.3.6.1.2.1.1.1.0",
+        "1.3.6.1.2.1.1.5.0",
+        "1.3.6.1.2.1.43.5.1.1.16.1",
+        "1.3.6.1.2.1.2.2.1.6.1",
+        "1.3.6.1.2.1.2.2.1.6.2",
+        "1.3.6.1.2.1.2.2.1.6.3"
+
+    ]
+
+    for oid in oids:
+
+        try:
+
+            results[oid] = get_snmp_data(
+                printer.ip,
+                oid
+            )
+
+        except Exception as e:
+
+            results[oid] = str(e)
+
+    db.close()
+
+    return results
+
+# =========================
+# SNMP WALK
+# =========================
+@app.get("/snmp-walk/{printer_id}")
+def snmp_walk(
+
+    printer_id: int,
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    printer = (
+        db.query(Printer)
+        .filter(Printer.id == printer_id)
+        .first()
+    )
+
+    if not printer:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="Impressora não encontrada"
+        )
+
+    
+
+    results = []
+
+    iterator = nextCmd(
+
+        SnmpEngine(),
+
+        CommunityData("public"),
+
+        UdpTransportTarget((printer.ip, 161)),
+
+        ContextData(),
+
+        ObjectType(
+            ObjectIdentity("1.3.6.1.2.1")
+        ),
+
+        lexicographicMode=False
+
+    )
+
+    for errorIndication, errorStatus, errorIndex, varBinds in iterator:
+
+        if errorIndication:
+
+            break
+
+        elif errorStatus:
+
+            break
+
+        else:
+
+            for varBind in varBinds:
+
+                oid, value = varBind
+
+                results.append({
+
+                    "oid": str(oid),
+
+                    "value": str(value)
+
+                })
+
+    db.close()
+
+    return results
 
 # =========================
 # PRINTER STATS

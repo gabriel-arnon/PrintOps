@@ -11,6 +11,8 @@ import {
   CartesianGrid,
 } from "recharts";
 
+import { formatDistanceToNow } from "date-fns" 
+import { ptBR } from "date-fns/locale"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -31,7 +33,7 @@ import {
   tooltipLabelStyle,
 } from "@/lib/chart-theme";
 import { getTonerLevel, tonerTextClass } from "@/lib/toner";
-import { formatRelativeToNow, formatShortClockTime } from "@/lib/time";
+import {formatRelativeToNow, formatShortClockTime, formatRelativeOperationalTime} from "@/lib/time";
 import {
   fetchPrinterDetails,
   fetchPrinterHistory,
@@ -164,14 +166,9 @@ function HistoryChart({
   );
 }
 
-function TechRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-4 py-1.5">
-      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
-      <span className="font-mono text-xs">{value}</span>
-    </div>
-  );
-}
+
+
+function TechRow({ label, value, valueClassName, }: { label: string; value: string; valueClassName?: string; }) { return ( <div className="flex items-center justify-between gap-4 py-1.5"> <span className="text-xs uppercase tracking-wide text-muted-foreground"> {label} </span> <span className={cn( "font-mono text-xs", valueClassName )} > {value} </span> </div> ); }
 
 export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange }: Props) {
   const [techOpen, setTechOpen] = useState(false);
@@ -228,12 +225,8 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" /> Uptime: {d.uptime}
                 </span>
-                {lastUpdate ? (
-                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <Clock className="h-3.5 w-3.5" />
-                    Última leitura: <RelativeTime date={lastUpdate} />
-                  </span>
-                ) : null}
+                {lastUpdate ? ( <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"> <Clock className="h-3.5 w-3.5" /> 
+                Última leitura: { formatRelativeOperationalTime( lastUpdate ) } </span> ) : null}
               </div>
             </>
           ) : (
@@ -339,6 +332,27 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
                   <TechRow label="Hostname" value={d.hostname} />
                   <TechRow label="MAC" value={d.mac} />
                   <TechRow label="Firmware" value={d.firmware} />
+                  <TechRow label="Uptime" value={d.uptime || "N/A"} />
+                  <TechRow label="Last Polling" value={ d.last_update ? formatRelativeOperationalTime( new Date(d.last_update), { addSuffix: true, locale: ptBR, } ) : "N/A" } />
+                  {"interface_status" in d ? (
+                    <TechRow
+                      label="Network Interface"
+                      value={
+                        typeof d.interface_status === "string"
+                          ? d.interface_status.toUpperCase()
+                          : "UNKNOWN"
+                      }
+                      valueClassName={
+                        d.interface_status === "up"
+                          ? "text-green-400"
+                          : d.interface_status === "down"
+                          ? "text-red-400"
+                          : "text-yellow-400"
+                      }
+                    />
+                  ) : null}
+            
+             
                 </>
               ) : (
                 <p className="py-2 text-xs text-muted-foreground">Sem dados.</p>
