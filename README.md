@@ -60,7 +60,7 @@ PrintOps provides real-time monitoring, SNMP-based data collection, operational 
 
 # Architecture
 
-
+```text
 Frontend (React + Vite)
         ↓
 FastAPI Backend API
@@ -68,34 +68,32 @@ FastAPI Backend API
 SNMP Polling Engine
         ↓
 PostgreSQL Database
+```
 
+---
 
-# Screenshots
+# Screenshots 
 
-## Dashboard
+## Dashboard 
+<img width="1920" height="931" alt="Captura de tela 2026-05-17 160934" src="https://github.com/user-attachments/assets/5baa8d6b-d3fb-4839-953f-f6ec59238f98" /> <img width="1912" height="923" alt="Captura de tela 2026-05-17 160957" src="https://github.com/user-attachments/assets/1d5caf3a-b028-47f5-98f3-f22a5f01d2b2" /> 
 
-<img width="1920" height="931" alt="Captura de tela 2026-05-17 160934" src="https://github.com/user-attachments/assets/5baa8d6b-d3fb-4839-953f-f6ec59238f98" />
-<img width="1912" height="923" alt="Captura de tela 2026-05-17 160957" src="https://github.com/user-attachments/assets/1d5caf3a-b028-47f5-98f3-f22a5f01d2b2" />
+## Printer Details Drawer 
 
+<img width="1920" height="928" alt="Captura de tela 2026-05-17 161050" src="https://github.com/user-attachments/assets/72e738d8-f515-4742-a000-6360f5c4a940" /> <img width="1920" height="930" alt="Captura de tela 2026-05-17 161736" src="https://github.com/user-attachments/assets/1952c7a7-3595-4359-bd49-ee845d73d90a" />
 
-## Printer Details Drawer
+## Discovery System 
 
-<img width="1920" height="928" alt="Captura de tela 2026-05-17 161050" src="https://github.com/user-attachments/assets/72e738d8-f515-4742-a000-6360f5c4a940" />
-<img width="1920" height="930" alt="Captura de tela 2026-05-17 161736" src="https://github.com/user-attachments/assets/1952c7a7-3595-4359-bd49-ee845d73d90a" />
+<img width="1920" height="922" alt="Captura de tela 2026-05-17 161112" src="https://github.com/user-attachments/assets/49944e46-d62a-445f-bdbb-7f7cd4be0355" /> <img width="1920" height="920" alt="Captura de tela 2026-05-17 161124" src="https://github.com/user-attachments/assets/8ce23dc8-57e6-41d7-93bc-e3ec03eadf07" /> <img width="1920" height="918" alt="Captura de tela 2026-05-17 161216" src="https://github.com/user-attachments/assets/b91c764a-31b5-4dea-ac55-cad25818ac61" /> 
 
-## Discovery System
-
-<img width="1920" height="922" alt="Captura de tela 2026-05-17 161112" src="https://github.com/user-attachments/assets/49944e46-d62a-445f-bdbb-7f7cd4be0355" />
-<img width="1920" height="920" alt="Captura de tela 2026-05-17 161124" src="https://github.com/user-attachments/assets/8ce23dc8-57e6-41d7-93bc-e3ec03eadf07" />
-<img width="1920" height="918" alt="Captura de tela 2026-05-17 161216" src="https://github.com/user-attachments/assets/b91c764a-31b5-4dea-ac55-cad25818ac61" />
-
-## Printers Add
+## Printers Add 
 
 <img width="1920" height="927" alt="Captura de tela 2026-05-17 161229" src="https://github.com/user-attachments/assets/f082e0e7-83df-40ca-9852-b1e718f91ade" />
 
+---
+
 # Project Structure
 
-
+```text
 print-monitor/
 │
 ├── backend/
@@ -114,9 +112,9 @@ print-monitor/
 │
 ├── docker-compose.yml
 └── README.md
+```
 
-
-
+---
 
 # Installation
 
@@ -131,14 +129,15 @@ print-monitor/
 
 # Backend Setup
 
-
+```bash
 cd backend
 
 pip install -r requirements.txt
 
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
 
-
+---
 
 # Frontend Setup
 
