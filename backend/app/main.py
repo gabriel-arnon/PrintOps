@@ -1120,6 +1120,111 @@ def printer_details(
 
 
 # =========================
+# SYSTEM HEALTH
+# =========================
+
+@app.get("/system/health")
+def system_health(
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    try:
+
+        printers = db.query(Printer).all()
+
+        total = len(printers)
+
+              
+        online = 0
+        offline = 0
+
+        for printer in printers:
+
+            latest_metric = (
+
+                db.query(PrinterMetric)
+
+                .filter(
+                    PrinterMetric.printer_id == printer.id
+                )
+
+                .order_by(
+                    PrinterMetric.created_at.desc()
+                )
+
+                .first()
+
+            )
+
+            if latest_metric:
+
+                online += 1
+
+            else:
+
+                offline += 1
+       
+
+
+        success_rate = round(
+
+            (online / total) * 100,
+
+            1
+
+        ) if total > 0 else 0
+
+        latest_metric = (
+
+            db.query(PrinterMetric)
+
+            .order_by(
+                PrinterMetric.created_at.desc()
+            )
+
+            .first()
+
+        )
+
+        last_run = (
+
+            latest_metric.created_at
+
+            if latest_metric
+
+            else None
+
+        )
+
+        return {
+
+            "discovery_status": "ok",
+
+            "targets": total,
+
+            "online": online,
+
+            "offline": offline,
+
+            "success_rate": success_rate,
+
+            "cycle_sec": 60,
+
+            "last_run": last_run,
+
+            "last_discovery_scan": last_run,
+
+        }
+
+    finally:
+
+        db.close()
+
+# =========================
 # PRINTER HISTORY
 # =========================
 

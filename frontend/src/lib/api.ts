@@ -92,6 +92,18 @@ export async function updatePrinter(id: number, input: { name: string }): Promis
   });
 }
 
+ 
+export async function fetchSystemHealth() {
+
+  return await request<any>(
+    "/system/health"
+  );
+
+}
+ 
+
+
+
 export interface DiscoveredPrinter {
   ip: string;
   model: string;
