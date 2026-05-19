@@ -77,6 +77,14 @@ export async function fetchTimeline() {
 
 }
  
+export async function fetchIncidentSummary() {
+
+  return await request<any>(
+    "/incidents/summary"
+  );
+
+}
+
  
 export async function acknowledgeEvent(
   eventId: number
@@ -117,6 +125,7 @@ export async function updatePrinter(id: number, input: { name: string }): Promis
 }
 
  
+ 
 export async function fetchSystemHealth() {
 
   return await request<any>(
@@ -124,6 +133,8 @@ export async function fetchSystemHealth() {
   );
 
 }
+ 
+
  
 
 

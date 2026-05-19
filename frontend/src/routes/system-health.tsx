@@ -1,7 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
  
-
+import { IncidentSummary } from "@/components/system-health/IncidentSummary"; 
+import { fetchIncidentSummary } from "@/lib/api";
  
 import { acknowledgeEvent } from "@/lib/api";
  
@@ -58,20 +59,7 @@ const healthQuery = useQuery({
 
   queryKey: ["system-health"],
 
-  queryFn: async () => {
-
-    const response = await fetch(
-      "http://localhost:8000/system/health",
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
-        },
-      }
-    );
-
-    return await response.json();
-
-  },
+  queryFn: fetchSystemHealth,
 
   refetchInterval: 30_000,
 
@@ -102,10 +90,21 @@ const acknowledgeMutation = useMutation({
 
 });
  
+ 
+const incidentSummaryQuery = useQuery({
+
+  queryKey: ["incident-summary"],
+
+  queryFn: fetchIncidentSummary,
+
+  refetchInterval: 30_000,
+
+});
+ 
 
 
 
-console.log("HEALTH QUERY", healthQuery);
+'###console.log("HEALTH QUERY", healthQuery);'
 
 
   const printers = dashboardQuery.data ?? [];
@@ -126,6 +125,7 @@ console.log("HEALTH QUERY", healthQuery);
 
   return (
 
+ 
     <SidebarProvider>
 
       <AppSidebar />
@@ -144,6 +144,20 @@ console.log("HEALTH QUERY", healthQuery);
           />
 
           <main className="grid gap-4 p-4">
+
+            <IncidentSummary
+              summary={incidentSummaryQuery.data ?? {
+
+                active: 0,
+
+                unacknowledged: 0,
+
+                critical: 0,
+
+                recoveries_24h: 0,
+
+              }}
+            />
 
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
 
@@ -170,8 +184,6 @@ console.log("HEALTH QUERY", healthQuery);
 
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_1fr]">
 
-              
-         
               <PollingMetrics
                 polling={{
                   discoveryStatus:
@@ -182,22 +194,34 @@ console.log("HEALTH QUERY", healthQuery);
                         : healthQuery.data?.discovery_status === "error"
                           ? "error"
                           : "ok",
+
                   lastRun: healthQuery.data?.last_run
                     ? new Date(healthQuery.data.last_run)
                     : new Date(),
-                  nextRunInSec: healthQuery.data?.cycle_sec ?? 60,
-                  cycleSec: healthQuery.data?.cycle_sec ?? 60,
-                  targets: healthQuery.data?.targets ?? 0,
-                  successRate: healthQuery.data?.success_rate ?? 0,
-                  lastDiscoveryScan: healthQuery.data?.last_discovery_scan
-                    ? new Date(healthQuery.data.last_discovery_scan)
-                    : new Date(),
+
+                  nextRunInSec:
+                    healthQuery.data?.cycle_sec ?? 60,
+
+                  cycleSec:
+                    healthQuery.data?.cycle_sec ?? 60,
+
+                  targets:
+                    healthQuery.data?.targets ?? 0,
+
+                  successRate:
+                    healthQuery.data?.success_rate ?? 0,
+
+                  lastDiscoveryScan:
+                    healthQuery.data?.last_discovery_scan
+                      ? new Date(
+                          healthQuery.data.last_discovery_scan
+                        )
+                      : new Date(),
                 }}
               />
-                              
-                         
+
               <EventTimeline
-                          
+
                 events={(timelineQuery.data ?? []).map((event) => ({
 
                   id: String(event.id),
@@ -213,10 +237,10 @@ console.log("HEALTH QUERY", healthQuery);
                   acknowledged: event.acknowledged,
 
                 }))}
+
                 acknowledgeMutation={acknowledgeMutation}
-                 
+
               />
-                               
 
             </section>
 
@@ -227,6 +251,8 @@ console.log("HEALTH QUERY", healthQuery);
       </SidebarInset>
 
     </SidebarProvider>
+ 
+
 
   );
 

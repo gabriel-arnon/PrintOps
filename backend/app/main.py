@@ -1621,6 +1621,87 @@ def acknowledge_event(
 
         db.close()
  
+ 
+# =========================
+# INCIDENT SUMMARY
+# =========================
+
+@app.get("/incidents/summary")
+def get_incident_summary(
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    try:
+
+        active = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.event_type == "printer_offline"
+            )
+
+            .count()
+
+        )
+
+        unacknowledged = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.event_type == "printer_offline",
+                PrinterEvent.acknowledged == False
+            )
+
+            .count()
+
+        )
+
+        critical = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.severity == "error"
+            )
+
+            .count()
+
+        )
+
+        recoveries = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.event_type == "printer_recovered"
+            )
+
+            .count()
+
+        )
+
+        return {
+
+            "active": active,
+
+            "unacknowledged": unacknowledged,
+
+            "critical": critical,
+
+            "recoveries_24h": recoveries,
+
+        }
+
+    finally:
+
+        db.close()
+ 
 
 
 # =========================
