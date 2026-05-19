@@ -1686,6 +1686,7 @@ def acknowledge_event(
         db.close()
  
  
+ 
 # =========================
 # INCIDENT SUMMARY
 # =========================
@@ -1701,54 +1702,51 @@ def get_incident_summary(
 
     try:
 
-        active = (
+        latest_events = {}
+
+        events = (
 
             db.query(PrinterEvent)
 
-            .filter(
-                PrinterEvent.event_type == "printer_offline"
+            .order_by(
+                PrinterEvent.created_at.desc()
             )
 
-            .count()
+            .all()
 
         )
 
-        unacknowledged = (
+        for event in events:
 
-            db.query(PrinterEvent)
+            if event.printer_id not in latest_events:
 
-            .filter(
-                PrinterEvent.event_type == "printer_offline",
-                PrinterEvent.acknowledged == False
-            )
+                latest_events[event.printer_id] = event
 
-            .count()
+        active = 0
 
-        )
+        unacknowledged = 0
 
-        critical = (
+        critical = 0
 
-            db.query(PrinterEvent)
+        recoveries = 0
 
-            .filter(
-                PrinterEvent.severity == "error"
-            )
+        for event in latest_events.values():
 
-            .count()
+            if event.event_type == "printer_offline":
 
-        )
+                active += 1
 
-        recoveries = (
+                if not event.acknowledged:
 
-            db.query(PrinterEvent)
+                    unacknowledged += 1
 
-            .filter(
-                PrinterEvent.event_type == "printer_recovered"
-            )
+                if event.severity == "error":
 
-            .count()
+                    critical += 1
 
-        )
+            elif event.event_type == "printer_recovered":
+
+                recoveries += 1
 
         return {
 
