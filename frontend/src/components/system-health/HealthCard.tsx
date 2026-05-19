@@ -9,7 +9,9 @@ export function HealthCard({ service }: { service: ServiceHealth }) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} />
-          <span className="text-[11px] uppercase tracking-[0.14em] text-[#7A8194]">{service.name}</span>
+          <span className="text-[11px] uppercase tracking-[0.14em] text-[#7A8194]">
+            {service.name}
+          </span>
         </div>
         <span
           className="rounded-sm border px-1.5 py-[1px] font-mono text-[10px] uppercase tracking-wider"

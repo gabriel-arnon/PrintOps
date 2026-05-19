@@ -27,6 +27,7 @@ from fastapi.security import (
 from pydantic import BaseModel
 
 from apscheduler.schedulers.background import BackgroundScheduler
+from sqlalchemy import text
 
 from app.database import engine
 from app.database import SessionLocal
@@ -118,6 +119,7 @@ manager = ConnectionManager()
  
 
 app = FastAPI()
+APP_STARTED_AT = datetime.now(timezone.utc)
 
 CORS_ORIGINS = [
     origin.strip()
@@ -1530,6 +1532,299 @@ def system_health(
 
         db.close()
 
+
+@app.get("/system/telemetry")
+def system_telemetry(
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    now = datetime.now(timezone.utc)
+
+    db_status = "ok"
+    db_message = "reachable"
+
+    try:
+
+        db.execute(text("SELECT 1"))
+
+        printers = db.query(Printer).all()
+
+        total = len(printers)
+
+        online = 0
+        offline = 0
+
+        latest_metric = (
+
+            db.query(PrinterMetric)
+
+            .order_by(
+                PrinterMetric.created_at.desc()
+            )
+
+            .first()
+
+        )
+
+        for printer in printers:
+
+            printer_metric = (
+
+                db.query(PrinterMetric)
+
+                .filter(
+                    PrinterMetric.printer_id == printer.id
+                )
+
+                .order_by(
+                    PrinterMetric.created_at.desc()
+                )
+
+                .first()
+
+            )
+
+            if printer_metric and printer_metric.status == "online":
+
+                online += 1
+
+            else:
+
+                offline += 1
+
+        success_rate = round(
+
+            (online / total) * 100,
+
+            1
+
+        ) if total > 0 else 0
+
+        event_window_start = now - timedelta(hours=24)
+
+        events_24h = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.created_at >= event_window_start
+            )
+
+            .count()
+
+        )
+
+        recoveries_24h = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.event_type == "printer_recovered",
+                PrinterEvent.created_at >= event_window_start
+            )
+
+            .count()
+
+        )
+
+        latest_events = {}
+
+        events = (
+
+            db.query(PrinterEvent)
+
+            .order_by(
+                PrinterEvent.created_at.desc()
+            )
+
+            .all()
+
+        )
+
+        for event in events:
+
+            if event.printer_id not in latest_events:
+
+                latest_events[event.printer_id] = event
+
+        active = 0
+        unacknowledged = 0
+        critical = 0
+
+        for event in latest_events.values():
+
+            if event.event_type != "printer_offline":
+
+                continue
+
+            active += 1
+
+            if not event.acknowledged:
+
+                unacknowledged += 1
+
+            if event.severity == "error":
+
+                critical += 1
+
+        snmp_status = "ok"
+
+        if total > 0 and offline > 0:
+
+            snmp_status = "warn"
+
+        if total > 0 and online == 0:
+
+            snmp_status = "error"
+
+        last_run = latest_metric.created_at if latest_metric else None
+
+        return {
+
+            "server_time": now,
+
+            "booted_at": APP_STARTED_AT,
+
+            "realtime_connections": len(manager.active_connections),
+
+            "services": [
+
+                {
+                    "id": "api",
+                    "name": "API",
+                    "status": "ok",
+                    "primary": "200 OK",
+                    "secondary": f"{len(manager.active_connections)} websocket clients",
+                    "value": 1,
+                },
+
+                {
+                    "id": "postgres",
+                    "name": "PostgreSQL",
+                    "status": db_status,
+                    "primary": db_message,
+                    "secondary": "SELECT 1 health probe",
+                    "value": 1 if db_status == "ok" else 0,
+                },
+
+                {
+                    "id": "snmp",
+                    "name": "SNMP Polling Engine",
+                    "status": snmp_status,
+                    "primary": f"{success_rate:.1f}% success",
+                    "secondary": f"{online}/{total} printers online",
+                    "value": success_rate,
+                },
+
+            ],
+
+            "fleet": {
+                "online": online,
+                "offline": offline,
+                "degraded": 0,
+                "total": total,
+            },
+
+            "polling": {
+                "discovery_status": snmp_status,
+                "last_run": last_run,
+                "cycle_sec": COLLECT_INTERVAL_MINUTES * 60,
+                "targets": total,
+                "success_rate": success_rate,
+                "last_discovery_scan": None,
+            },
+
+            "incidents": {
+                "active": active,
+                "unacknowledged": unacknowledged,
+                "critical": critical,
+                "recoveries_24h": recoveries_24h,
+                "events_24h": events_24h,
+            },
+
+            "snmp_latency": {
+                "available": False,
+                "points": [],
+                "reason": "SNMP request latency is not persisted yet.",
+            },
+
+        }
+
+    except Exception as e:
+
+        db_status = "error"
+        db_message = str(e)
+
+        return {
+
+            "server_time": now,
+
+            "booted_at": APP_STARTED_AT,
+
+            "realtime_connections": len(manager.active_connections),
+
+            "services": [
+
+                {
+                    "id": "api",
+                    "name": "API",
+                    "status": "warn",
+                    "primary": "degraded",
+                    "secondary": "database telemetry unavailable",
+                    "value": 0,
+                },
+
+                {
+                    "id": "postgres",
+                    "name": "PostgreSQL",
+                    "status": db_status,
+                    "primary": "unreachable",
+                    "secondary": db_message,
+                    "value": 0,
+                },
+
+            ],
+
+            "fleet": {
+                "online": 0,
+                "offline": 0,
+                "degraded": 0,
+                "total": 0,
+            },
+
+            "polling": {
+                "discovery_status": "error",
+                "last_run": None,
+                "cycle_sec": COLLECT_INTERVAL_MINUTES * 60,
+                "targets": 0,
+                "success_rate": 0,
+                "last_discovery_scan": None,
+            },
+
+            "incidents": {
+                "active": 0,
+                "unacknowledged": 0,
+                "critical": 0,
+                "recoveries_24h": 0,
+                "events_24h": 0,
+            },
+
+            "snmp_latency": {
+                "available": False,
+                "points": [],
+                "reason": "SNMP request latency is not persisted yet.",
+            },
+
+        }
+
+    finally:
+
+        db.close()
+
 # =========================
 # PRINTER HISTORY
 # =========================
@@ -1855,6 +2150,10 @@ def get_incident_summary(
 
     try:
 
+        now = datetime.now(timezone.utc)
+
+        event_window_start = now - timedelta(hours=24)
+
         latest_events = {}
 
         events = (
@@ -1881,7 +2180,18 @@ def get_incident_summary(
 
         critical = 0
 
-        recoveries = 0
+        recoveries_24h = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.event_type == "printer_recovered",
+                PrinterEvent.created_at >= event_window_start
+            )
+
+            .count()
+
+        )
 
         for event in latest_events.values():
 
@@ -1897,10 +2207,6 @@ def get_incident_summary(
 
                     critical += 1
 
-            elif event.event_type == "printer_recovered":
-         
-                recoveries += 1
-
         return {
 
             "active": active,
@@ -1909,7 +2215,7 @@ def get_incident_summary(
 
             "critical": critical,
 
-            "recoveries_24h": recoveries,
+            "recoveries_24h": recoveries_24h,
 
         }
 

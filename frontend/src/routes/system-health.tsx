@@ -6,7 +6,7 @@ import { fetchIncidentSummary } from "@/lib/api";
 
 import { acknowledgeEvent } from "@/lib/api";
 
-import { fetchSystemHealth } from "@/lib/api";
+import { fetchSystemTelemetry } from "@/lib/api";
 import { fetchTimeline } from "@/lib/api";
 
 import { ActiveIncidents } from "@/components/system-health/ActiveIncidents";
@@ -28,23 +28,11 @@ import { EventTimeline } from "@/components/system-health/EventTimeline";
 
 import { useTelemetry } from "@/lib/system-health/telemetry";
 
-import { fetchDashboard, type Printer } from "@/lib/api";
-
 export const Route = createFileRoute("/system-health")({
   component: SystemHealthPage,
 });
 
 function SystemHealthPage() {
-  const telemetry = useTelemetry();
-
-  const dashboardQuery = useQuery({
-    queryKey: ["dashboard"],
-
-    queryFn: fetchDashboard,
-
-    refetchInterval: 30_000,
-  });
-
   const activeIncidentsQuery = useQuery({
     queryKey: ["active-incidents"],
 
@@ -53,13 +41,15 @@ function SystemHealthPage() {
     refetchInterval: 5_000,
   });
 
-  const healthQuery = useQuery({
-    queryKey: ["system-health"],
+  const systemTelemetryQuery = useQuery({
+    queryKey: ["system-telemetry"],
 
-    queryFn: fetchSystemHealth,
+    queryFn: fetchSystemTelemetry,
 
-    refetchInterval: 30_000,
+    refetchInterval: 15_000,
   });
+
+  const telemetry = useTelemetry(systemTelemetryQuery.data);
 
   const timelineQuery = useQuery({
     queryKey: ["timeline"],
@@ -85,16 +75,6 @@ function SystemHealthPage() {
     refetchInterval: 30_000,
   });
 
-  const printers = dashboardQuery.data ?? [];
-
-  const fleet = {
-    online: printers.filter((p: Printer) => p.status === "online").length,
-
-    offline: printers.filter((p: Printer) => p.status === "offline").length,
-
-    degraded: 0,
-  };
-
   return (
     <SidebarProvider>
       <AppSidebar />
@@ -108,6 +88,7 @@ function SystemHealthPage() {
             bootedAt={telemetry.bootedAt}
             lastSync={telemetry.lastSync}
             global={telemetry.global}
+            realtimeConnections={telemetry.realtimeConnections}
           />
 
           <main className="grid gap-4 p-4">
@@ -134,38 +115,27 @@ function SystemHealthPage() {
             </section>
 
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_1fr]">
-              <FleetDonut fleet={fleet} />
+              <FleetDonut fleet={telemetry.fleet} />
 
-              <SnmpLatencyChart data={telemetry.latency ?? []} />
+              <SnmpLatencyChart latency={telemetry.latency} />
             </section>
 
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_1fr]">
               <PollingMetrics
                 polling={{
-                  discoveryStatus:
-                    healthQuery.data?.discovery_status === "ok"
-                      ? "ok"
-                      : healthQuery.data?.discovery_status === "warn"
-                        ? "warn"
-                        : healthQuery.data?.discovery_status === "error"
-                          ? "error"
-                          : "ok",
+                  discoveryStatus: telemetry.polling.discoveryStatus,
 
-                  lastRun: healthQuery.data?.last_run
-                    ? new Date(healthQuery.data.last_run)
-                    : new Date(),
+                  lastRun: telemetry.polling.lastRun,
 
-                  nextRunInSec: healthQuery.data?.cycle_sec ?? 60,
+                  nextRunInSec: telemetry.polling.nextRunInSec,
 
-                  cycleSec: healthQuery.data?.cycle_sec ?? 60,
+                  cycleSec: telemetry.polling.cycleSec,
 
-                  targets: healthQuery.data?.targets ?? 0,
+                  targets: telemetry.polling.targets,
 
-                  successRate: healthQuery.data?.success_rate ?? 0,
+                  successRate: telemetry.polling.successRate,
 
-                  lastDiscoveryScan: healthQuery.data?.last_discovery_scan
-                    ? new Date(healthQuery.data.last_discovery_scan)
-                    : new Date(),
+                  lastDiscoveryScan: telemetry.polling.lastDiscoveryScan,
                 }}
               />
 
