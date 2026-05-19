@@ -8,9 +8,9 @@ services:
     restart: always
 
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin
-      POSTGRES_DB: printmonitor
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-admin}
+      POSTGRES_DB: ${POSTGRES_DB:-printmonitor}
 
     ports:
       - "5432:5432"
@@ -30,6 +30,16 @@ services:
 
     depends_on:
       - postgres
+
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-admin}@postgres:5432/${POSTGRES_DB:-printmonitor}}
+      SECRET_KEY: ${SECRET_KEY:-change-me-in-production}
+      PRINT_MONITOR_USERNAME: ${PRINT_MONITOR_USERNAME:-ti}
+      PRINT_MONITOR_PASSWORD: ${PRINT_MONITOR_PASSWORD:-cpd@123}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000,http://localhost:4173,http://127.0.0.1:4173,http://localhost:5173,http://127.0.0.1:5173,http://localhost:8080,http://127.0.0.1:8080}
+      DISCOVERY_BASE_IP: ${DISCOVERY_BASE_IP:-192.168.5.}
+      SNMP_COMMUNITY: ${SNMP_COMMUNITY:-public}
+      COLLECT_INTERVAL_MINUTES: ${COLLECT_INTERVAL_MINUTES:-3}
 
 volumes:
   postgres_data:

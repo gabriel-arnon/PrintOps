@@ -1,3 +1,5 @@
+import os
+
 from pysnmp.hlapi import (
     getCmd,
     SnmpEngine,
@@ -7,6 +9,8 @@ from pysnmp.hlapi import (
     ObjectType,
     ObjectIdentity
 )
+
+SNMP_COMMUNITY = os.getenv("SNMP_COMMUNITY", "public")
 
 # =========================
 # SINGLE OID
@@ -26,7 +30,7 @@ def get_snmp_data(
 
         SnmpEngine(),
 
-        CommunityData('public'),
+        CommunityData(SNMP_COMMUNITY),
 
         UdpTransportTarget(
 
@@ -82,7 +86,7 @@ def get_multiple_snmp_data(
 
         SnmpEngine(),
 
-        CommunityData('public'),
+        CommunityData(SNMP_COMMUNITY),
 
         UdpTransportTarget(
 

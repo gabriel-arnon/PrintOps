@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SystemHealthRouteImport } from './routes/system-health'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PrintersRouteImport } from './routes/printers'
@@ -16,6 +17,11 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as IndexRouteImport } from './routes/index'
 
+const SystemHealthRoute = SystemHealthRouteImport.update({
+  id: '/system-health',
+  path: '/system-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/printers': typeof PrintersRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/system-health': typeof SystemHealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/printers': typeof PrintersRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/system-health': typeof SystemHealthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,12 +79,27 @@ export interface FileRoutesById {
   '/printers': typeof PrintersRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/system-health': typeof SystemHealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/alerts' | '/login' | '/printers' | '/reports' | '/settings'
+  fullPaths:
+    | '/'
+    | '/alerts'
+    | '/login'
+    | '/printers'
+    | '/reports'
+    | '/settings'
+    | '/system-health'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/alerts' | '/login' | '/printers' | '/reports' | '/settings'
+  to:
+    | '/'
+    | '/alerts'
+    | '/login'
+    | '/printers'
+    | '/reports'
+    | '/settings'
+    | '/system-health'
   id:
     | '__root__'
     | '/'
@@ -85,6 +108,7 @@ export interface FileRouteTypes {
     | '/printers'
     | '/reports'
     | '/settings'
+    | '/system-health'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -94,10 +118,18 @@ export interface RootRouteChildren {
   PrintersRoute: typeof PrintersRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
+  SystemHealthRoute: typeof SystemHealthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/system-health': {
+      id: '/system-health'
+      path: '/system-health'
+      fullPath: '/system-health'
+      preLoaderRoute: typeof SystemHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -150,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrintersRoute: PrintersRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
+  SystemHealthRoute: SystemHealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -33,6 +33,111 @@ export interface HealthStatus {
   latencyMs: number;
 }
 
+export type SystemStatus = "ok" | "warn" | "error";
+export type EventSeverity = "info" | "warn" | "error";
+
+export interface SystemTelemetryService {
+  id: string;
+  name: string;
+  status: SystemStatus;
+  primary: string;
+  secondary: string;
+  value: number;
+}
+
+export interface SystemTelemetryFleet {
+  online: number;
+  offline: number;
+  degraded: number;
+  total: number;
+}
+
+export interface SystemTelemetryPolling {
+  discovery_status: SystemStatus;
+  last_run: string | null;
+  cycle_sec: number;
+  targets: number;
+  success_rate: number;
+  last_discovery_scan: string | null;
+}
+
+export interface SystemTelemetryIncidentCounts {
+  active: number;
+  unacknowledged: number;
+  critical: number;
+  recoveries_24h: number;
+  events_24h: number;
+}
+
+export interface SystemTelemetryLatencyPoint {
+  t: number;
+  avg: number;
+  p95: number;
+}
+
+export interface SystemTelemetryLatency {
+  available: boolean;
+  points: SystemTelemetryLatencyPoint[];
+  reason: string;
+}
+
+export interface SystemTelemetry {
+  server_time: string;
+  booted_at: string;
+  realtime_connections: number;
+  services: SystemTelemetryService[];
+  fleet: SystemTelemetryFleet;
+  polling: SystemTelemetryPolling;
+  incidents: SystemTelemetryIncidentCounts;
+  snmp_latency: SystemTelemetryLatency;
+}
+
+export interface TimelineEvent {
+  id: number;
+  printer: string;
+  event_type: string;
+  severity: EventSeverity;
+  message: string;
+  acknowledged: boolean;
+  created_at: string;
+}
+
+export interface PrinterEvent {
+  id: number;
+  event_type: string;
+  severity: EventSeverity;
+  message: string;
+  acknowledged: boolean;
+  created_at: string;
+}
+
+export interface ActiveIncident {
+  printer_id: number;
+  printer: string;
+  severity: EventSeverity;
+  acknowledged: boolean;
+  offline_since: string;
+  duration_sec: number;
+}
+
+export interface IncidentSummaryData {
+  active: number;
+  unacknowledged: number;
+  critical: number;
+  recoveries_24h: number;
+}
+
+export interface SystemHealthData {
+  discovery_status: SystemStatus;
+  targets: number;
+  online: number;
+  offline: number;
+  success_rate: number;
+  cycle_sec: number;
+  last_run: string | null;
+  last_discovery_scan: string | null;
+}
+
 import { getToken, redirectToLogin } from "./auth";
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "");
@@ -69,6 +174,28 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+export async function fetchTimeline(): Promise<TimelineEvent[]> {
+  return await request<TimelineEvent[]>("/timeline");
+}
+
+export async function fetchPrinterEvents(printerId: number): Promise<PrinterEvent[]> {
+  return await request<PrinterEvent[]>(`/printers/${printerId}/events`);
+}
+
+export async function fetchActiveIncidents(): Promise<ActiveIncident[]> {
+  return await request<ActiveIncident[]>("/incidents/active");
+}
+
+export async function fetchIncidentSummary(): Promise<IncidentSummaryData> {
+  return await request<IncidentSummaryData>("/incidents/summary");
+}
+
+export async function acknowledgeEvent(eventId: number) {
+  return await request(`/events/${eventId}/ack`, {
+    method: "PATCH",
+  });
+}
+
 export interface CreatePrinterInput {
   name: string;
   ip: string;
@@ -90,6 +217,14 @@ export async function updatePrinter(id: number, input: { name: string }): Promis
     method: "PATCH",
     body: JSON.stringify(input),
   });
+}
+
+export async function fetchSystemHealth(): Promise<SystemHealthData> {
+  return await request<SystemHealthData>("/system/health");
+}
+
+export async function fetchSystemTelemetry(): Promise<SystemTelemetry> {
+  return await request<SystemTelemetry>("/system/telemetry");
 }
 
 export interface DiscoveredPrinter {
