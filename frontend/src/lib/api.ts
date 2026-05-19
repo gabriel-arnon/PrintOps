@@ -76,6 +76,19 @@ export async function fetchTimeline() {
   );
 
 }
+
+ 
+export async function fetchPrinterEvents(
+  printerId: number
+) {
+
+  return await request<any[]>(
+    `/printers/${printerId}/events`
+  );
+
+}
+ 
+
  
 export async function fetchIncidentSummary() {
 

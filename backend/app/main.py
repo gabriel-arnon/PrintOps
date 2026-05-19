@@ -287,6 +287,70 @@ def create_printer_event(
     db.commit()
 
 
+ 
+# =========================
+# PRINTER EVENTS
+# =========================
+
+@app.get("/printers/{printer_id}/events")
+def get_printer_events(
+
+    printer_id: int,
+
+    limit: int = 25,
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    try:
+
+        events = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.printer_id == printer_id
+            )
+
+            .order_by(
+                PrinterEvent.created_at.desc()
+            )
+
+            .limit(limit)
+
+            .all()
+
+        )
+
+        return [
+
+            {
+
+                "id": event.id,
+
+                "event_type": event.event_type,
+
+                "severity": event.severity,
+
+                "message": event.message,
+
+                "acknowledged": event.acknowledged,
+
+                "created_at": event.created_at,
+
+            }
+
+            for event in events
+
+        ]
+
+    finally:
+
+        db.close()
+ 
 
 
 

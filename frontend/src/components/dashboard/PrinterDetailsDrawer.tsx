@@ -37,6 +37,7 @@ import {formatRelativeToNow, formatShortClockTime, formatRelativeOperationalTime
 import {
   fetchPrinterDetails,
   fetchPrinterHistory,
+  fetchPrinterEvents,
   fetchPrinterStats,
   type PrinterHistoryPoint,
 } from "@/lib/api";
@@ -198,6 +199,24 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
     placeholderData: (prev) => prev,
   });
 
+ 
+const eventsQ = useQuery({
+
+  queryKey: ["printer", printerId, "events"],
+
+  queryFn: () =>
+    fetchPrinterEvents(printerId as number),
+
+  enabled,
+
+  staleTime: 1000 * 30,
+
+  placeholderData: (prev) => prev,
+
+});
+ 
+
+
   const d = detailsQ.data;
   const limitedHistory = (historyQ.data ?? []).slice(-50);
 
@@ -315,6 +334,121 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
                 </div>
               </div>
             )}
+          </section>
+
+          {/* Operational History */}
+
+          <section className="space-y-4">
+
+            <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+
+              <Activity className="h-3.5 w-3.5" />
+
+              Operational History
+
+            </h3>
+
+            {eventsQ.isLoading && !eventsQ.data ? (
+
+              <div className="space-y-2">
+
+                {Array.from({ length: 4 }).map((_, i) => (
+
+                  <Skeleton
+                    key={i}
+                    className="h-12 w-full"
+                  />
+
+                ))}
+
+              </div>
+
+            ) : (
+
+              <div className="overflow-hidden rounded-lg border border-border/60 bg-card/40">
+
+                {(eventsQ.data ?? []).map((event: any) => {
+
+                  const color =
+
+                    event.severity === "error"
+                      ? "#FF5D73"
+                      : event.severity === "warn"
+                        ? "#FFB84D"
+                        : "#3DDC97";
+
+                  return (
+
+                    <div
+                      key={event.id}
+                      className={cn(
+                        "flex items-center gap-3 border-b border-border/50 px-4 py-3 text-sm last:border-0",
+                        event.acknowledged && "opacity-50"
+                      )}
+                    >
+
+                      <div
+                        className="h-2 w-2 rounded-full"
+                        style={{ background: color }}
+                      />
+
+                      <div className="min-w-0 flex-1">
+
+                        <div className="truncate text-sm text-foreground">
+
+                          {event.message}
+
+                        </div>
+
+                        <div className="mt-1 text-[11px] text-muted-foreground">
+
+                          {formatDistanceToNow(
+                            new Date(event.created_at),
+                            {
+                              addSuffix: true,
+                              locale: ptBR,
+                            }
+                          )}
+
+                        </div>
+
+                      </div>
+
+                      {event.acknowledged ? (
+
+                        <span className="rounded border border-[#3DDC9733] bg-[#3DDC9711] px-1.5 py-[2px] text-[10px] font-mono uppercase tracking-wider text-[#3DDC97]">
+
+                          ACKED
+
+                        </span>
+
+                      ) : (
+
+                        <span
+                          className="rounded px-1.5 py-[2px] text-[10px] font-mono uppercase tracking-wider"
+                          style={{
+                            color,
+                            background: `${color}11`,
+                            border: `1px solid ${color}33`,
+                          }}
+                        >
+
+                          {event.severity}
+
+                        </span>
+
+                      )}
+
+                    </div>
+
+                  );
+
+                })}
+
+              </div>
+
+            )}
+
           </section>
 
           {/* Informações técnicas */}
