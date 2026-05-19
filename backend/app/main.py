@@ -32,6 +32,7 @@ from app.database import Base
 
 from app.models.printer import Printer
 from app.models.printer_metric import PrinterMetric
+from app.models.printer_event import PrinterEvent
 
 from app.snmp.collector import (
     get_snmp_data,
@@ -254,6 +255,38 @@ def discover_single_printer(ip):
 
         db.close()
 
+# =========================
+# CREATE PRINTER EVENT
+# =========================
+
+
+def create_printer_event(
+
+    db,
+    printer,
+    event_type,
+    severity,
+    message
+
+):
+
+    event = PrinterEvent(
+
+        printer_id=printer.id,
+
+        event_type=event_type,
+
+        severity=severity,
+
+        message=message,
+
+    )
+
+    db.add(event)
+
+    db.commit()
+
+
 
 # =========================
 # AUTO COLLECT
@@ -304,6 +337,41 @@ def run_collect():
                 "1.3.6.1.2.1.43.10.2.1.4.1.1"
             ))
 
+                        
+            last_metric = (
+
+                db.query(PrinterMetric)
+
+                .filter(
+                    PrinterMetric.printer_id == printer.id
+                )
+
+                .order_by(
+                    PrinterMetric.created_at.desc()
+                )
+
+                .first()
+
+            )
+
+            if last_metric and last_metric.status == "offline":
+
+                create_printer_event(
+
+                    db=db,
+
+                    printer=printer,
+
+                    event_type="printer_recovered",
+
+                    severity="info",
+
+                    message=f"{printer.name} voltou a responder SNMP",
+
+                )
+           
+
+
             metric = PrinterMetric(
 
                 printer_id=printer.id,
@@ -346,6 +414,25 @@ def run_collect():
                 last_toner = last_metric.toner_percent
                 last_pages = last_metric.pages
                 last_image = last_metric.image_unit_percent
+
+                        
+            if last_metric and last_metric.status == "online":
+
+                create_printer_event(
+
+                    db=db,
+
+                    printer=printer,
+
+                    event_type="printer_offline",
+
+                    severity="error",
+
+                    message=f"{printer.name} ficou offline",
+
+                )
+            
+
 
             metric = PrinterMetric(
 
