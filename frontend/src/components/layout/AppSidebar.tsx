@@ -1,12 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  Printer,
-  BarChart3,
-  Bell,
-  Settings,
-  Activity,
-} from "lucide-react";
+import { LayoutDashboard, Printer, BarChart3, Bell, Settings, Activity } from "lucide-react";
 
 import {
   Sidebar,
@@ -28,6 +21,7 @@ interface AppSidebarProps {
 
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, enabled: true },
+  { title: "System Health", url: "/system-health", icon: Activity, enabled: true },
   { title: "Impressoras", url: "/printers", icon: Printer, enabled: false },
   { title: "Relatórios", url: "/reports", icon: BarChart3, enabled: false },
 ] as const;
@@ -45,7 +39,9 @@ export function AppSidebar({ alertCount = 0 }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon" className="border-r border-sidebar-border">
       <SidebarHeader className="border-b border-sidebar-border">
-        <div className={cn("flex items-center gap-2 px-2 py-2", collapsed && "justify-center px-0")}>
+        <div
+          className={cn("flex items-center gap-2 px-2 py-2", collapsed && "justify-center px-0")}
+        >
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary/15 ring-1 ring-primary/30">
             <Activity className="h-4 w-4 text-primary" />
           </div>
