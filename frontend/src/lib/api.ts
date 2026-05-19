@@ -69,6 +69,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+export async function fetchTimeline() {
+
+  return await request<any[]>(
+    "/timeline"
+  );
+
+}
+ 
+
+
 export interface CreatePrinterInput {
   name: string;
   ip: string;

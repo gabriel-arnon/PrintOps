@@ -288,6 +288,8 @@ def create_printer_event(
 
 
 
+
+
 # =========================
 # AUTO COLLECT
 # =========================
@@ -1491,6 +1493,74 @@ def snmp_walk(
     db.close()
 
     return results
+
+
+ 
+# =========================
+# TIMELINE
+# =========================
+
+@app.get("/timeline")
+def get_timeline(
+
+    limit: int = 50,
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    try:
+
+        events = (
+
+            db.query(PrinterEvent, Printer)
+
+            .join(
+                Printer,
+                Printer.id == PrinterEvent.printer_id
+            )
+
+            .order_by(
+                PrinterEvent.created_at.desc()
+            )
+
+            .limit(limit)
+
+            .all()
+
+        )
+
+        result = []
+
+        for event, printer in events:
+
+            result.append({
+
+                "id": event.id,
+
+                "printer": printer.name,
+
+                "event_type": event.event_type,
+
+                "severity": event.severity,
+
+                "message": event.message,
+
+                "acknowledged": event.acknowledged,
+
+                "created_at": event.created_at,
+
+            })
+
+        return result
+
+    finally:
+
+        db.close()
+ 
+
 
 # =========================
 # PRINTER STATS

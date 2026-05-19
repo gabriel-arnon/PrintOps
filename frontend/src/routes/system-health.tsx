@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { fetchSystemHealth } from "@/lib/api";
-
+import { fetchTimeline } from "@/lib/api";
 
 
 import {
@@ -70,6 +70,19 @@ const healthQuery = useQuery({
   refetchInterval: 30_000,
 
 });
+
+ 
+const timelineQuery = useQuery({
+
+  queryKey: ["timeline"],
+
+  queryFn: fetchTimeline,
+
+  refetchInterval: 30_000,
+
+});
+ 
+
  
 
 
@@ -162,8 +175,24 @@ console.log("HEALTH QUERY", healthQuery);
                     : new Date(),
                 }}
               />
-        
-        
+                              
+                         
+              <EventTimeline
+                events={(timelineQuery.data ?? []).map((event) => ({
+
+                  id: String(event.id),
+
+                  severity: event.severity,
+
+                  component: event.printer,
+
+                  message: event.message,
+
+                  ts: new Date(event.created_at),
+
+                }))}
+              />
+                               
 
             </section>
 
