@@ -6,7 +6,7 @@ import { fetchIncidentSummary } from "@/lib/api";
 
 import { acknowledgeEvent } from "@/lib/api";
 
-import { fetchSystemTelemetry } from "@/lib/api";
+import { fetchHealth, fetchSystemTelemetry } from "@/lib/api";
 import { fetchTimeline } from "@/lib/api";
 
 import { ActiveIncidents } from "@/components/system-health/ActiveIncidents";
@@ -19,7 +19,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 
 import { Topbar } from "@/components/layout/Topbar";
 
-import { TopBar } from "@/components/system-health/TopBar";
+import { OperationalTelemetryStrip } from "@/components/system-health/TopBar";
 import { HealthCard } from "@/components/system-health/HealthCard";
 import { FleetDonut } from "@/components/system-health/FleetDonut";
 import { PollingMetrics } from "@/components/system-health/PollingMetrics";
@@ -51,6 +51,14 @@ function SystemHealthPage() {
 
   const telemetry = useTelemetry(systemTelemetryQuery.data);
 
+  const healthQuery = useQuery({
+    queryKey: ["health"],
+
+    queryFn: fetchHealth,
+
+    refetchInterval: 15_000,
+  });
+
   const timelineQuery = useQuery({
     queryKey: ["timeline"],
 
@@ -75,22 +83,46 @@ function SystemHealthPage() {
     refetchInterval: 30_000,
   });
 
+  const onRefresh = () => {
+    activeIncidentsQuery.refetch();
+    systemTelemetryQuery.refetch();
+    healthQuery.refetch();
+    timelineQuery.refetch();
+    incidentSummaryQuery.refetch();
+  };
+
+  const refreshing =
+    activeIncidentsQuery.isFetching ||
+    systemTelemetryQuery.isFetching ||
+    healthQuery.isFetching ||
+    timelineQuery.isFetching ||
+    incidentSummaryQuery.isFetching;
+
   return (
     <SidebarProvider>
       <AppSidebar />
 
       <SidebarInset>
-        <Topbar />
+        <Topbar
+          title="PrintOps"
+          subtitle="System Health"
+          health={healthQuery.data}
+          healthLoading={healthQuery.isLoading}
+          lastUpdated={systemTelemetryQuery.dataUpdatedAt}
+          onRefresh={onRefresh}
+          refreshing={refreshing}
+          telemetry={
+            <OperationalTelemetryStrip
+              now={telemetry.now}
+              bootedAt={telemetry.bootedAt}
+              lastSync={telemetry.lastSync}
+              global={telemetry.global}
+              realtimeConnections={telemetry.realtimeConnections}
+            />
+          }
+        />
 
         <div className="min-h-screen bg-[#0A0B0F] text-[#E6E8EE]">
-          <TopBar
-            now={telemetry.now}
-            bootedAt={telemetry.bootedAt}
-            lastSync={telemetry.lastSync}
-            global={telemetry.global}
-            realtimeConnections={telemetry.realtimeConnections}
-          />
-
           <main className="grid gap-4 p-4">
             <IncidentSummary
               summary={
