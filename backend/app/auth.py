@@ -1,3 +1,5 @@
+import os
+
 from datetime import datetime, timedelta
 
 from jose import JWTError, jwt
@@ -12,11 +14,16 @@ from fastapi.security import OAuth2PasswordBearer
 # CONFIG
 # =========================
 
-SECRET_KEY = "4b4b9c18c5e24e8c9e8f3c8d9b1e6f"
+SECRET_KEY = os.getenv(
+    "SECRET_KEY",
+    "change-me-in-production"
+)
 
 ALGORITHM = "HS256"
 
-ACCESS_TOKEN_EXPIRE_HOURS = 8
+ACCESS_TOKEN_EXPIRE_HOURS = int(
+    os.getenv("ACCESS_TOKEN_EXPIRE_HOURS", "8")
+)
 
 # =========================
 # PASSWORD HASH
@@ -39,12 +46,17 @@ oauth2_scheme = OAuth2PasswordBearer(
 # USUÁRIO MVP
 # =========================
 
+DEFAULT_USERNAME = os.getenv("PRINT_MONITOR_USERNAME", "ti")
+DEFAULT_PASSWORD = os.getenv("PRINT_MONITOR_PASSWORD", "cpd@123")
+DEFAULT_PASSWORD_HASH = os.getenv("PRINT_MONITOR_PASSWORD_HASH")
+
 fake_user = {
 
-    "username": "ti",
+    "username": DEFAULT_USERNAME,
 
-    # senha: 
-    "hashed_password": pwd_context.hash("cpd@123")
+    "hashed_password": DEFAULT_PASSWORD_HASH or pwd_context.hash(
+        DEFAULT_PASSWORD
+    )
 
 }
 

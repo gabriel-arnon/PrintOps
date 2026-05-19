@@ -6,6 +6,7 @@ from concurrent.futures import (
     as_completed
 )
 
+import os
 import platform
 import time
 from datetime import datetime, timedelta, timezone
@@ -37,6 +38,7 @@ from app.models.printer_metric import PrinterMetric
 from app.models.printer_event import PrinterEvent
 
 from app.snmp.collector import (
+    SNMP_COMMUNITY,
     get_snmp_data,
     get_multiple_snmp_data
 )
@@ -117,6 +119,25 @@ manager = ConnectionManager()
 
 app = FastAPI()
 
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv(
+        "CORS_ORIGINS",
+        (
+            "http://localhost:3000,http://127.0.0.1:3000,"
+            "http://localhost:4173,http://127.0.0.1:4173,"
+            "http://localhost:5173,http://127.0.0.1:5173,"
+            "http://localhost:8080,http://127.0.0.1:8080"
+        )
+    ).split(",")
+    if origin.strip()
+]
+
+DISCOVERY_BASE_IP = os.getenv("DISCOVERY_BASE_IP", "192.168.5.")
+COLLECT_INTERVAL_MINUTES = int(
+    os.getenv("COLLECT_INTERVAL_MINUTES", "3")
+)
+
  
 # =========================
 # WEBSOCKET
@@ -149,7 +170,7 @@ async def websocket_endpoint(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -660,7 +681,7 @@ def run_collect():
 scheduler.add_job(
     run_collect,
     'interval',
-    minutes=3
+    minutes=COLLECT_INTERVAL_MINUTES
 )
 
 scheduler.start()
@@ -882,8 +903,6 @@ def create_printer(
 
         print("Erro coleta inicial:", e)
 
-        id="z1w6yu"
-
     printer_data = {
 
         "id": new_printer.id,
@@ -989,7 +1008,7 @@ def discover_printers(
 
 ):
 
-    base_ip = "192.168.5."
+    base_ip = DISCOVERY_BASE_IP
 
     print("[DISCOVERY] Iniciando descoberta...")
 
@@ -1120,6 +1139,10 @@ def delete_printer(
 
     db.query(PrinterMetric).filter(
         PrinterMetric.printer_id == printer.id
+    ).delete()
+
+    db.query(PrinterEvent).filter(
+        PrinterEvent.printer_id == printer.id
     ).delete()
 
     db.delete(printer)
@@ -1443,7 +1466,7 @@ def system_health(
 
             )
 
-            if latest_metric:
+            if latest_metric and latest_metric.status == "online":
 
                 online += 1
 
@@ -1495,7 +1518,7 @@ def system_health(
 
             "success_rate": success_rate,
 
-            "cycle_sec": 60,
+            "cycle_sec": COLLECT_INTERVAL_MINUTES * 60,
 
             "last_run": last_run,
 
@@ -1646,7 +1669,7 @@ def snmp_walk(
 
         SnmpEngine(),
 
-        CommunityData("public"),
+        CommunityData(SNMP_COMMUNITY),
 
         UdpTransportTarget((printer.ip, 161)),
 
