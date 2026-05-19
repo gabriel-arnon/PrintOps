@@ -1561,6 +1561,67 @@ def get_timeline(
         db.close()
  
 
+ 
+# =========================
+# ACKNOWLEDGE EVENT
+# =========================
+
+@app.patch("/events/{event_id}/ack")
+def acknowledge_event(
+
+    event_id: int,
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    try:
+
+        event = (
+
+            db.query(PrinterEvent)
+
+            .filter(
+                PrinterEvent.id == event_id
+            )
+
+            .first()
+
+        )
+
+        if not event:
+
+            raise HTTPException(
+
+                status_code=404,
+
+                detail="Evento não encontrado"
+
+            )
+
+        event.acknowledged = True
+
+        db.commit()
+
+        db.refresh(event)
+
+        return {
+
+            "success": True,
+
+            "event_id": event.id,
+
+            "acknowledged": event.acknowledged,
+
+        }
+
+    finally:
+
+        db.close()
+ 
+
 
 # =========================
 # PRINTER STATS

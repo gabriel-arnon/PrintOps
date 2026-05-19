@@ -77,6 +77,20 @@ export async function fetchTimeline() {
 
 }
  
+ 
+export async function acknowledgeEvent(
+  eventId: number
+) {
+
+  return await request(
+    `/events/${eventId}/ack`,
+    {
+      method: "PATCH",
+    }
+  );
+
+}
+ 
 
 
 export interface CreatePrinterInput {

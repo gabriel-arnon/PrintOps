@@ -1,5 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+ 
+
+ 
+import { acknowledgeEvent } from "@/lib/api";
+ 
+
 import { fetchSystemHealth } from "@/lib/api";
 import { fetchTimeline } from "@/lib/api";
 
@@ -84,6 +90,19 @@ const timelineQuery = useQuery({
  
 
  
+const acknowledgeMutation = useMutation({
+
+  mutationFn: acknowledgeEvent,
+
+  onSuccess: () => {
+
+    timelineQuery.refetch();
+
+  },
+
+});
+ 
+
 
 
 console.log("HEALTH QUERY", healthQuery);
@@ -178,6 +197,7 @@ console.log("HEALTH QUERY", healthQuery);
                               
                          
               <EventTimeline
+                          
                 events={(timelineQuery.data ?? []).map((event) => ({
 
                   id: String(event.id),
@@ -190,7 +210,11 @@ console.log("HEALTH QUERY", healthQuery);
 
                   ts: new Date(event.created_at),
 
+                  acknowledged: event.acknowledged,
+
                 }))}
+                acknowledgeMutation={acknowledgeMutation}
+                 
               />
                                
 

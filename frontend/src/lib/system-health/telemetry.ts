@@ -40,6 +40,7 @@ export interface OpEvent {
   severity: Severity;
   component: string;
   message: string;
+  acknowledged?: boolean;
 }
 
 export interface Telemetry {
