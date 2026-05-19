@@ -1,5 +1,6 @@
 from pysnmp.hlapi import *
- 
+import asyncio
+from fastapi import WebSocket 
 from concurrent.futures import (
     ThreadPoolExecutor,
     as_completed
@@ -30,6 +31,7 @@ from app.database import engine
 from app.database import SessionLocal
 from app.database import Base
 
+
 from app.models.printer import Printer
 from app.models.printer_metric import PrinterMetric
 from app.models.printer_event import PrinterEvent
@@ -45,7 +47,101 @@ from app.auth import (
     get_current_user
 )
 
+ 
+# =========================
+# WEBSOCKET MANAGER
+# =========================
+
+class ConnectionManager:
+
+    def __init__(self):
+
+        self.active_connections = []
+
+    async def connect(
+
+        self,
+
+        websocket: WebSocket
+
+    ):
+
+        await websocket.accept()
+
+        self.active_connections.append(
+            websocket
+        )
+
+    def disconnect(
+
+        self,
+
+        websocket: WebSocket
+
+    ):
+
+        self.active_connections.remove(
+            websocket
+        )
+
+    async def broadcast(
+
+        self,
+
+        message: dict
+
+    ):
+
+        disconnected = []
+
+        for connection in self.active_connections:
+
+            try:
+
+                await connection.send_json(
+                    message
+                )
+
+            except:
+
+                disconnected.append(
+                    connection
+                )
+
+        for conn in disconnected:
+
+            self.disconnect(conn)
+
+manager = ConnectionManager()
+ 
+
 app = FastAPI()
+
+ 
+# =========================
+# WEBSOCKET
+# =========================
+
+@app.websocket("/ws")
+
+async def websocket_endpoint(
+
+    websocket: WebSocket
+
+):
+
+    await manager.connect(websocket)
+
+    try:
+
+        while True:
+
+            await websocket.receive_text()
+
+    except:
+
+        manager.disconnect(websocket)
+ 
 
 # =========================
 # CORS
@@ -287,6 +383,7 @@ def create_printer_event(
     db.commit()
 
 
+
  
 # =========================
 # PRINTER EVENTS
@@ -435,8 +532,24 @@ def run_collect():
                     message=f"{printer.name} voltou a responder SNMP",
 
                 )
-           
 
+                           
+                asyncio.run(
+
+                    manager.broadcast({
+
+                        "type": "printer_recovered",
+
+                        "printer": printer.name,
+
+                        "severity": "info",
+
+                        "message": f"{printer.name} voltou a responder SNMP",
+
+                    })
+
+                )
+ 
 
             metric = PrinterMetric(
 
@@ -495,6 +608,23 @@ def run_collect():
                     severity="error",
 
                     message=f"{printer.name} ficou offline",
+
+                )
+
+ 
+                asyncio.run(
+
+                    manager.broadcast({
+
+                        "type": "printer_offline",
+
+                        "printer": printer.name,
+
+                        "severity": "error",
+
+                        "message": f"{printer.name} ficou offline",
+
+                    })
 
                 )
             
@@ -1745,7 +1875,7 @@ def get_incident_summary(
                     critical += 1
 
             elif event.event_type == "printer_recovered":
-
+         
                 recoveries += 1
 
         return {

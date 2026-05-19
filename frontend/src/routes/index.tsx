@@ -10,12 +10,15 @@ import { SummaryCards } from "@/components/dashboard/SummaryCards";
 import { TonerChart } from "@/components/dashboard/TonerChart";
 import { ImageUnitChart } from "@/components/dashboard/ImageUnitChart";
 import { PrintersTable } from "@/components/dashboard/PrintersTable";
+import { Toaster } from "@/components/ui/sonner";
 import { fetchDashboard, fetchHealth } from "@/lib/api";
+ 
 
 export const Route = createFileRoute("/")({
   component: DashboardPage,
 });
 
+ 
 function DashboardPage() {
   const qc = useQueryClient();
   const navigate = useNavigate();

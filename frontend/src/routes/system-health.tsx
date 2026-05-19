@@ -11,6 +11,7 @@ import { fetchSystemHealth } from "@/lib/api";
 import { fetchTimeline } from "@/lib/api";
 
  
+ 
 import { ActiveIncidents } from "@/components/system-health/ActiveIncidents";
 
 import { fetchActiveIncidents } from "@/lib/api";
@@ -23,6 +24,7 @@ import {
 } from "@/components/ui/sidebar";
 
 import { AppSidebar } from "@/components/layout/AppSidebar";
+
 
 import { Topbar } from "@/components/layout/Topbar";
 
@@ -47,6 +49,7 @@ export const Route = createFileRoute(
 });
 
 function SystemHealthPage() {
+
 
   const telemetry = useTelemetry();
 
