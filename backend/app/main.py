@@ -1,5 +1,5 @@
 from pysnmp.hlapi import *
-
+ 
 from concurrent.futures import (
     ThreadPoolExecutor,
     as_completed
@@ -7,7 +7,7 @@ from concurrent.futures import (
 
 import platform
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import subprocess
 
 from fastapi import (
@@ -1759,6 +1759,94 @@ def get_incident_summary(
             "recoveries_24h": recoveries,
 
         }
+
+    finally:
+
+        db.close()
+ 
+ 
+# =========================
+# ACTIVE INCIDENTS
+# =========================
+
+@app.get("/incidents/active")
+def get_active_incidents(
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    try:
+
+        latest_events = {}
+
+        events = (
+
+            db.query(PrinterEvent)
+
+            .order_by(
+                PrinterEvent.created_at.desc()
+            )
+
+            .all()
+
+        )
+
+        for event in events:
+
+            if event.printer_id not in latest_events:
+
+                latest_events[event.printer_id] = event
+
+        active_incidents = []
+
+        now = datetime.now(timezone.utc)
+
+        for event in latest_events.values():
+
+            if event.event_type != "printer_offline":
+
+                continue
+
+            duration = int(
+
+                (
+                    now - event.created_at
+                ).total_seconds()
+
+            )
+
+            printer = (
+
+                db.query(Printer)
+
+                .filter(
+                    Printer.id == event.printer_id
+                )
+
+                .first()
+
+            )
+
+            active_incidents.append({
+
+                "printer_id": event.printer_id,
+
+                "printer": printer.name if printer else "Unknown",
+
+                "severity": event.severity,
+
+                "acknowledged": event.acknowledged,
+
+                "offline_since": event.created_at,
+
+                "duration_sec": duration,
+
+            })
+
+        return active_incidents
 
     finally:
 

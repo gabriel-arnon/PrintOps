@@ -87,6 +87,17 @@ export async function fetchPrinterEvents(
   );
 
 }
+
+
+export async function fetchActiveIncidents() {
+
+  return await request<any[]>(
+    "/incidents/active"
+  );
+
+}
+
+
  
 
  

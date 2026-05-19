@@ -10,6 +10,12 @@ import { acknowledgeEvent } from "@/lib/api";
 import { fetchSystemHealth } from "@/lib/api";
 import { fetchTimeline } from "@/lib/api";
 
+ 
+import { ActiveIncidents } from "@/components/system-health/ActiveIncidents";
+
+import { fetchActiveIncidents } from "@/lib/api";
+ 
+
 
 import {
   SidebarProvider,
@@ -55,6 +61,17 @@ function SystemHealthPage() {
   });
 
  
+const activeIncidentsQuery = useQuery({
+
+  queryKey: ["active-incidents"],
+
+  queryFn: fetchActiveIncidents,
+
+  refetchInterval: 5_000,
+
+});
+ 
+
 const healthQuery = useQuery({
 
   queryKey: ["system-health"],
@@ -158,6 +175,14 @@ const incidentSummaryQuery = useQuery({
 
               }}
             />
+                         
+            <ActiveIncidents
+              incidents={
+                activeIncidentsQuery.data ?? []
+              }
+            />
+             
+
 
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-3">
 
