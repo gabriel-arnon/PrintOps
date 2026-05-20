@@ -66,7 +66,7 @@ export async function login(username: string, password: string): Promise<LoginRe
   const res = await fetch(`${BASE_URL}/login`, {
     method: "POST",
     body: formData,
-    headers: { "ngrok-skip-browser-warning": "true" },
+    
   });
 
   if (!res.ok) {
@@ -81,7 +81,9 @@ export async function login(username: string, password: string): Promise<LoginRe
     throw new Error(detail || `Erro ao autenticar (HTTP ${res.status})`);
   }
 
-  const data = (await res.json()) as LoginResponse;
+
+
+  const data = await res.json() as LoginResponse
   if (!data.access_token) throw new Error("Resposta de login inválida");
   setToken(data.access_token);
   return data;
