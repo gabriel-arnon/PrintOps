@@ -22,6 +22,7 @@ import { PrinterDetailsDrawer } from "./PrinterDetailsDrawer";
 import { ImageUnitBar } from "./ImageUnitBar";
 import { TonerBar } from "./TonerBar";
 import { cn } from "@/lib/utils";
+import { normalizePrinterStatus } from "@/lib/printer-status";
 import type { Printer } from "@/lib/api";
 
 type SortKey = "printer" | "status" | "toner_percent" | "image_unit_percent" | "last_update";
@@ -72,6 +73,7 @@ export function PrintersTable({ printers, loading }: { printers: Printer[]; load
 
   const selectedLastUpdate =
     selectedId != null ? printers.find((p) => p.id === selectedId)?.last_update : undefined;
+  const selectedPrinter = selectedId != null ? printers.find((p) => p.id === selectedId) : null;
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir(sortDir === "asc" ? "desc" : "asc");
@@ -231,7 +233,7 @@ export function PrintersTable({ printers, loading }: { printers: Printer[]; load
                           {p.model}
                         </TableCell>
                         <TableCell>
-                          <StatusBadge status={p.status} />
+                          <StatusBadge status={normalizePrinterStatus(p.status)} />
                         </TableCell>
                         <TableCell className="min-w-[160px]">
                           <TonerBar percent={p.toner_percent} />
@@ -262,6 +264,7 @@ export function PrintersTable({ printers, loading }: { printers: Printer[]; load
       </Card>
       <PrinterDetailsDrawer
         printerId={selectedId}
+        printer={selectedPrinter}
         lastUpdate={selectedLastUpdate}
         open={drawerOpen}
         onOpenChange={setDrawerOpen}

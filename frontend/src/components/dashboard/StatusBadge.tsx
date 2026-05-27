@@ -1,9 +1,9 @@
 import { cn } from "@/lib/utils";
-import type { DetailedPrinterStatus, PrinterStatus } from "@/lib/api";
+import type { OperationalPrinterStatus } from "@/lib/printer-status";
 
 export type StatusBadgeSize = "sm" | "md";
 
-type AnyStatus = PrinterStatus | DetailedPrinterStatus;
+type AnyStatus = OperationalPrinterStatus;
 
 type StatusStyle = {
   label: string;
@@ -49,6 +49,20 @@ const STATUS_STYLES: Record<AnyStatus, StatusStyle> = {
     text: "text-[oklch(0.80_0.10_75)]",
     dot: "bg-[oklch(0.74_0.12_75)]",
   },
+  warning: {
+    label: "Alerta",
+    shell:
+      "border-[oklch(0.70_0.11_75/0.36)] bg-[oklch(0.68_0.10_75/0.09)] shadow-[inset_0_1px_0_0_oklch(1_0_0/0.04)]",
+    text: "text-[oklch(0.80_0.10_75)]",
+    dot: "bg-[oklch(0.74_0.12_75)]",
+  },
+  degraded: {
+    label: "Degradado",
+    shell:
+      "border-[oklch(0.64_0.12_45/0.38)] bg-[oklch(0.58_0.10_45/0.10)] shadow-[inset_0_1px_0_0_oklch(1_0_0/0.04)]",
+    text: "text-[oklch(0.78_0.11_45)]",
+    dot: "bg-[oklch(0.66_0.13_45)]",
+  },
   offline: {
     label: "Offline",
     shell:
@@ -80,11 +94,11 @@ export function StatusBadge({
   size = "sm",
   className,
 }: {
-  status: AnyStatus;
+  status: AnyStatus | string;
   size?: StatusBadgeSize;
   className?: string;
 }) {
-  const s = STATUS_STYLES[status] ?? STATUS_STYLES.unknown;
+  const s = STATUS_STYLES[status as AnyStatus] ?? STATUS_STYLES.unknown;
   const sz = SIZE[size];
 
   return (

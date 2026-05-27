@@ -1278,20 +1278,28 @@ def printer_details(
         .first()
     )
 
-    try:
+    metric_status = latest_metric.status if latest_metric else "unknown"
 
-        raw_status = int(get_snmp_data(
-            printer.ip,
-            "1.3.6.1.2.1.25.3.5.1.1.1"
-        ))
+    if metric_status == "offline":
 
-        status = parse_printer_status(
-            raw_status
-        )
+        status = "offline"
 
-    except Exception:
+    else:
 
-        status = "unknown"
+        try:
+
+            raw_status = int(get_snmp_data(
+                printer.ip,
+                "1.3.6.1.2.1.25.3.5.1.1.1"
+            ))
+
+            status = parse_printer_status(
+                raw_status
+            )
+
+        except Exception:
+
+            status = metric_status
 
     try:
 
@@ -1384,6 +1392,19 @@ def printer_details(
     except Exception:
 
         interface_status = "unknown"
+
+    if status not in ("offline", "printing", "warmup"):
+
+        if interface_status == "down":
+
+            status = "degraded"
+
+        elif latest_metric and (
+            latest_metric.toner_percent < 20
+            or latest_metric.image_unit_percent < 20
+        ):
+
+            status = "warning"
     
 
 

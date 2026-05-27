@@ -25,14 +25,14 @@ const soundPatterns: Record<AlertSoundType, SoundPattern> = {
     gapMs: 70,
     steps: [
       { frequency: 720, durationMs: 110, gain: 0.22, type: "square" },
-      { frequency: 620, durationMs: 140, gain: 0.21, type: ".square" },
+      { frequency: 620, durationMs: 140, gain: 0.21, type: "square" },
     ],
   },
   printer_recovered: {
     gapMs: 40,
     steps: [
       { frequency: 520, durationMs: 90, gain: 0.19, type: "sine" },
-      { frequency: 760, durationMs: 120, gain: 0.20, type: "sine" },
+      { frequency: 760, durationMs: 120, gain: 0.2, type: "sine" },
     ],
   },
   toner_low: {
@@ -59,6 +59,7 @@ let playing = false;
 let unlockHandlersInstalled = false;
 
 type AudioWindow = Window & {
+  AudioContext?: typeof AudioContext;
   webkitAudioContext?: typeof AudioContext;
 };
 

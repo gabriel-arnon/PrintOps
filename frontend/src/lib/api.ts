@@ -13,7 +13,15 @@
  * )
  */
 
-export type PrinterStatus = "online" | "offline";
+export type PrinterStatus =
+  | "online"
+  | "offline"
+  | "printing"
+  | "warning"
+  | "degraded"
+  | "idle"
+  | "unknown"
+  | "no_data";
 
 export interface Printer {
   id: number;
@@ -247,6 +255,8 @@ export type DetailedPrinterStatus =
   | "warmup"
   | "online"
   | "offline"
+  | "warning"
+  | "degraded"
   | "unknown";
 
 export interface PrinterDetails {
@@ -263,6 +273,8 @@ export interface PrinterDetails {
   toner_percent: number;
   image_unit_percent: number;
   pages: number;
+  last_update: string | null;
+  interface_status?: "up" | "down" | "unknown" | string;
 }
 
 export interface PrinterHistoryPoint {

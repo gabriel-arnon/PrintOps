@@ -15,10 +15,7 @@ export function useRealtime() {
   useEffect(() => {
     initializeSoundAlerts();
 
-    
-    const ws = new WebSocket("ws://192.168.5.65:8000/ws")
-
-
+    const ws = new WebSocket("ws://192.168.5.65:8000/ws");
 
     ws.onopen = () => {
       console.log("Realtime connected");
@@ -71,6 +68,10 @@ export function useRealtime() {
 
       queryClient.invalidateQueries({
         queryKey: ["dashboard"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["printer"],
       });
 
       queryClient.invalidateQueries({

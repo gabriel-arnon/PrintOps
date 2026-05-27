@@ -35,17 +35,21 @@ import {
   formatRelativeToNow,
   formatShortClockTime,
   formatRelativeOperationalTime,
+  safeDateParse,
 } from "@/lib/time";
+import { deriveOperationalPrinterStatus } from "@/lib/printer-status";
 import {
   fetchPrinterDetails,
   fetchPrinterHistory,
   fetchPrinterEvents,
   fetchPrinterStats,
+  type Printer,
   type PrinterHistoryPoint,
 } from "@/lib/api";
 
 interface Props {
   printerId: number | null;
+  printer?: Printer | null;
   lastUpdate?: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -111,11 +115,22 @@ function HistoryChart({
       />
     );
   }
-  const formatted = data.map((d) => ({
-    ...d,
-    time: formatShortClockTime(d.created_at),
-    relative: formatRelativeToNow(d.created_at),
-  }));
+  const formatted = data
+    .map((d) => {
+      const parsed = safeDateParse(d.created_at);
+      if (!parsed) return null;
+
+      return {
+        ...d,
+        timestamp: parsed.getTime(),
+        time: formatShortClockTime(parsed),
+        relative: formatRelativeToNow(parsed),
+      };
+    })
+    .filter((d): d is PrinterHistoryPoint & { timestamp: number; time: string; relative: string } =>
+      Boolean(d),
+    )
+    .sort((a, b) => a.timestamp - b.timestamp);
   const valueLabel = dataKey === "toner_percent" ? "Toner" : "Unidade de imagem";
 
   return (
@@ -124,7 +139,11 @@ function HistoryChart({
         <LineChart data={formatted} margin={chartMargins.line}>
           <CartesianGrid {...chartGrid} vertical={false} />
           <XAxis
-            dataKey="time"
+            dataKey="timestamp"
+            type="number"
+            scale="time"
+            domain={["dataMin", "dataMax"]}
+            tickFormatter={(value: number) => formatShortClockTime(value)}
             tick={axisTickX}
             tickLine={false}
             axisLine={false}
@@ -138,9 +157,11 @@ function HistoryChart({
             contentStyle={tooltipContentStyle}
             labelStyle={tooltipLabelStyle}
             itemStyle={tooltipItemStyle}
-            labelFormatter={(_l, payload) => {
-              const p = payload?.[0]?.payload as { relative?: string } | undefined;
-              return p?.relative ?? "";
+            labelFormatter={(label, payload) => {
+              const p = payload?.[0]?.payload as
+                | { relative?: string; timestamp?: number }
+                | undefined;
+              return p?.relative ?? formatShortClockTime(label);
             }}
             formatter={(v: number) => [`${v}%`, valueLabel]}
             wrapperStyle={{ outline: "none" }}
@@ -186,7 +207,13 @@ function TechRow({
   );
 }
 
-export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange }: Props) {
+export function PrinterDetailsDrawer({
+  printerId,
+  printer,
+  lastUpdate,
+  open,
+  onOpenChange,
+}: Props) {
   const [techOpen, setTechOpen] = useState(false);
   const enabled = open && printerId != null;
 
@@ -194,24 +221,21 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
     queryKey: ["printer", printerId, "details"],
     queryFn: () => fetchPrinterDetails(printerId as number),
     enabled,
-    staleTime: 1000 * 60,
-    placeholderData: (prev) => prev,
+    staleTime: 0,
   });
 
   const historyQ = useQuery({
     queryKey: ["printer", printerId, "history"],
     queryFn: () => fetchPrinterHistory(printerId as number),
     enabled,
-    staleTime: 1000 * 60,
-    placeholderData: (prev) => prev,
+    staleTime: 0,
   });
 
   const statsQ = useQuery({
     queryKey: ["printer", printerId, "stats"],
     queryFn: () => fetchPrinterStats(printerId as number),
     enabled,
-    staleTime: 1000 * 60,
-    placeholderData: (prev) => prev,
+    staleTime: 0,
   });
 
   const eventsQ = useQuery({
@@ -221,13 +245,20 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
 
     enabled,
 
-    staleTime: 1000 * 30,
-
-    placeholderData: (prev) => prev,
+    staleTime: 0,
   });
 
   const d = detailsQ.data;
-  const limitedHistory = (historyQ.data ?? []).slice(-50);
+  const operationalStatus = deriveOperationalPrinterStatus(d, printer);
+  const limitedHistory = (historyQ.data ?? [])
+    .map((point) => {
+      const parsed = safeDateParse(point.created_at);
+      return parsed ? { point, timestamp: parsed.getTime() } : null;
+    })
+    .filter((point): point is { point: PrinterHistoryPoint; timestamp: number } => Boolean(point))
+    .sort((a, b) => a.timestamp - b.timestamp)
+    .slice(-50)
+    .map(({ point }) => point);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -249,7 +280,7 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
                 {d.model} · <span className="font-mono">{d.ip}</span>
               </div>
               <div className="flex flex-wrap items-center gap-3 pt-1">
-                <StatusBadge status={d.status} size="md" />
+                <StatusBadge status={operationalStatus} size="md" />
                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" /> Uptime: {d.uptime}
                 </span>
