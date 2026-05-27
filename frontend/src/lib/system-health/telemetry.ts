@@ -1,6 +1,13 @@
-import { useEffect, useState } from "react";
-
+import { useTemporalTick } from "@/hooks/useTemporalTick";
 import type { SystemTelemetry } from "@/lib/api";
+import {
+  calculateNextRun,
+  formatAbsoluteTime,
+  formatCountdown as formatCountdownMs,
+  formatUptime as formatUptimeValue,
+  millisecondsUntilNextRun,
+  safeDateParse,
+} from "@/lib/time";
 
 export type Status = "ok" | "warn" | "error";
 export type Severity = "info" | "warn" | "error";
@@ -25,7 +32,8 @@ export interface FleetCounts {
 export interface PollingInfo {
   discoveryStatus: Status;
   lastRun: Date | null;
-  nextRunInSec: number | null;
+  nextRunAt: Date | null;
+  nextRunInMs: number | null;
   cycleSec: number;
   targets: number;
   successRate: number;
@@ -66,22 +74,8 @@ export interface Telemetry {
   realtimeConnections: number;
 }
 
-function parseDate(value: string | null | undefined): Date | null {
-  if (!value) return null;
-
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? null : date;
-}
-
 function stableSpark(value: number): number[] {
   return Array.from({ length: 12 }, () => value);
-}
-
-function calculateNextRunInSec(lastRun: Date | null, cycleSec: number, now: Date): number | null {
-  if (!lastRun || cycleSec <= 0) return null;
-
-  const elapsedSec = Math.floor((now.getTime() - lastRun.getTime()) / 1_000);
-  return Math.max(0, cycleSec - elapsedSec);
 }
 
 function aggregateStatus(services: ServiceHealth[]): Status {
@@ -110,7 +104,8 @@ function emptyTelemetry(now: Date): Telemetry {
     polling: {
       discoveryStatus: "warn",
       lastRun: null,
-      nextRunInSec: null,
+      nextRunAt: null,
+      nextRunInMs: null,
       cycleSec: 0,
       targets: 0,
       successRate: 0,
@@ -128,19 +123,16 @@ function emptyTelemetry(now: Date): Telemetry {
 }
 
 export function useTelemetry(data?: SystemTelemetry): Telemetry {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(new Date()), 1_000);
-    return () => window.clearInterval(id);
-  }, []);
+  useTemporalTick(true);
+  const now = new Date();
 
   if (!data) return emptyTelemetry(now);
 
-  const bootedAt = parseDate(data.booted_at) ?? now;
-  const lastSync = parseDate(data.server_time) ?? now;
-  const lastRun = parseDate(data.polling.last_run);
-  const lastDiscoveryScan = parseDate(data.polling.last_discovery_scan);
+  const bootedAt = safeDateParse(data.booted_at) ?? now;
+  const lastSync = safeDateParse(data.server_time) ?? now;
+  const lastRun = safeDateParse(data.polling.last_run);
+  const nextRunAt = calculateNextRun(lastRun, data.polling.cycle_sec);
+  const lastDiscoveryScan = safeDateParse(data.polling.last_discovery_scan);
 
   const services: ServiceHealth[] = data.services.map((service) => ({
     id: service.id,
@@ -165,7 +157,8 @@ export function useTelemetry(data?: SystemTelemetry): Telemetry {
     polling: {
       discoveryStatus: data.polling.discovery_status,
       lastRun,
-      nextRunInSec: calculateNextRunInSec(lastRun, data.polling.cycle_sec, now),
+      nextRunAt,
+      nextRunInMs: millisecondsUntilNextRun(lastRun, data.polling.cycle_sec, now),
       cycleSec: data.polling.cycle_sec,
       targets: data.polling.targets,
       successRate: data.polling.success_rate,
@@ -183,24 +176,16 @@ export function useTelemetry(data?: SystemTelemetry): Telemetry {
 }
 
 export function formatUptime(from: Date, now: Date): string {
-  const ms = Math.max(0, now.getTime() - from.getTime());
-  const d = Math.floor(ms / 86_400_000);
-  const h = Math.floor((ms % 86_400_000) / 3_600_000);
-  const m = Math.floor((ms % 3_600_000) / 60_000);
-  return `${d}d ${String(h).padStart(2, "0")}h ${String(m).padStart(2, "0")}m`;
+  return formatUptimeValue(from, now);
 }
 
 export function formatTime(d: Date | null): string {
   if (!d) return "not recorded";
-  return d.toLocaleTimeString("en-GB", { hour12: false });
+  return formatAbsoluteTime(d);
 }
 
-export function formatCountdown(sec: number | null): string {
-  if (sec === null) return "not scheduled";
-
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+export function formatCountdown(ms: number | null): string {
+  return formatCountdownMs(ms);
 }
 
 export const STATUS_LABEL: Record<Status, string> = {

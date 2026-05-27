@@ -11,8 +11,6 @@ import {
   CartesianGrid,
 } from "recharts";
 
-import { formatDistanceToNow } from "date-fns" 
-import { ptBR } from "date-fns/locale"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -33,7 +31,11 @@ import {
   tooltipLabelStyle,
 } from "@/lib/chart-theme";
 import { getTonerLevel, tonerTextClass } from "@/lib/toner";
-import {formatRelativeToNow, formatShortClockTime, formatRelativeOperationalTime} from "@/lib/time";
+import {
+  formatRelativeToNow,
+  formatShortClockTime,
+  formatRelativeOperationalTime,
+} from "@/lib/time";
 import {
   fetchPrinterDetails,
   fetchPrinterHistory,
@@ -167,9 +169,22 @@ function HistoryChart({
   );
 }
 
-
-
-function TechRow({ label, value, valueClassName, }: { label: string; value: string; valueClassName?: string; }) { return ( <div className="flex items-center justify-between gap-4 py-1.5"> <span className="text-xs uppercase tracking-wide text-muted-foreground"> {label} </span> <span className={cn( "font-mono text-xs", valueClassName )} > {value} </span> </div> ); }
+function TechRow({
+  label,
+  value,
+  valueClassName,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-1.5">
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className={cn("font-mono text-xs", valueClassName)}>{value}</span>
+    </div>
+  );
+}
 
 export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange }: Props) {
   const [techOpen, setTechOpen] = useState(false);
@@ -199,23 +214,17 @@ export function PrinterDetailsDrawer({ printerId, lastUpdate, open, onOpenChange
     placeholderData: (prev) => prev,
   });
 
- 
-const eventsQ = useQuery({
+  const eventsQ = useQuery({
+    queryKey: ["printer", printerId, "events"],
 
-  queryKey: ["printer", printerId, "events"],
+    queryFn: () => fetchPrinterEvents(printerId as number),
 
-  queryFn: () =>
-    fetchPrinterEvents(printerId as number),
+    enabled,
 
-  enabled,
+    staleTime: 1000 * 30,
 
-  staleTime: 1000 * 30,
-
-  placeholderData: (prev) => prev,
-
-});
- 
-
+    placeholderData: (prev) => prev,
+  });
 
   const d = detailsQ.data;
   const limitedHistory = (historyQ.data ?? []).slice(-50);
@@ -244,8 +253,12 @@ const eventsQ = useQuery({
                 <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                   <Clock className="h-3.5 w-3.5" /> Uptime: {d.uptime}
                 </span>
-                {lastUpdate ? ( <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground"> <Clock className="h-3.5 w-3.5" /> 
-                Última leitura: { formatRelativeOperationalTime( lastUpdate ) } </span> ) : null}
+                {lastUpdate ? (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5" />
+                    Última leitura: {formatRelativeOperationalTime(lastUpdate)}
+                  </span>
+                ) : null}
               </div>
             </>
           ) : (
@@ -339,38 +352,21 @@ const eventsQ = useQuery({
           {/* Operational History */}
 
           <section className="space-y-4">
-
             <h3 className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-
               <Activity className="h-3.5 w-3.5" />
-
               Operational History
-
             </h3>
 
             {eventsQ.isLoading && !eventsQ.data ? (
-
               <div className="space-y-2">
-
                 {Array.from({ length: 4 }).map((_, i) => (
-
-                  <Skeleton
-                    key={i}
-                    className="h-12 w-full"
-                  />
-
+                  <Skeleton key={i} className="h-12 w-full" />
                 ))}
-
               </div>
-
             ) : (
-
               <div className="overflow-hidden rounded-lg border border-border/60 bg-card/40">
-
-                {(eventsQ.data ?? []).map((event: any) => {
-
+                {(eventsQ.data ?? []).map((event) => {
                   const color =
-
                     event.severity === "error"
                       ? "#FF5D73"
                       : event.severity === "warn"
@@ -378,52 +374,28 @@ const eventsQ = useQuery({
                         : "#3DDC97";
 
                   return (
-
                     <div
                       key={event.id}
                       className={cn(
                         "flex items-center gap-3 border-b border-border/50 px-4 py-3 text-sm last:border-0",
-                        event.acknowledged && "opacity-50"
+                        event.acknowledged && "opacity-50",
                       )}
                     >
-
-                      <div
-                        className="h-2 w-2 rounded-full"
-                        style={{ background: color }}
-                      />
+                      <div className="h-2 w-2 rounded-full" style={{ background: color }} />
 
                       <div className="min-w-0 flex-1">
-
-                        <div className="truncate text-sm text-foreground">
-
-                          {event.message}
-
-                        </div>
+                        <div className="truncate text-sm text-foreground">{event.message}</div>
 
                         <div className="mt-1 text-[11px] text-muted-foreground">
-
-                          {formatDistanceToNow(
-                            new Date(event.created_at),
-                            {
-                              addSuffix: true,
-                              locale: ptBR,
-                            }
-                          )}
-
+                          {formatRelativeToNow(event.created_at)}
                         </div>
-
                       </div>
 
                       {event.acknowledged ? (
-
                         <span className="rounded border border-[#3DDC9733] bg-[#3DDC9711] px-1.5 py-[2px] text-[10px] font-mono uppercase tracking-wider text-[#3DDC97]">
-
                           ACKED
-
                         </span>
-
                       ) : (
-
                         <span
                           className="rounded px-1.5 py-[2px] text-[10px] font-mono uppercase tracking-wider"
                           style={{
@@ -432,23 +404,14 @@ const eventsQ = useQuery({
                             border: `1px solid ${color}33`,
                           }}
                         >
-
                           {event.severity}
-
                         </span>
-
                       )}
-
                     </div>
-
                   );
-
                 })}
-
               </div>
-
             )}
-
           </section>
 
           {/* Informações técnicas */}
@@ -467,7 +430,10 @@ const eventsQ = useQuery({
                   <TechRow label="MAC" value={d.mac} />
                   <TechRow label="Firmware" value={d.firmware} />
                   <TechRow label="Uptime" value={d.uptime || "N/A"} />
-                  <TechRow label="Last Polling" value={ d.last_update ? formatRelativeOperationalTime( new Date(d.last_update), { addSuffix: true, locale: ptBR, } ) : "N/A" } />
+                  <TechRow
+                    label="Last Polling"
+                    value={d.last_update ? formatRelativeOperationalTime(d.last_update) : "N/A"}
+                  />
                   {"interface_status" in d ? (
                     <TechRow
                       label="Network Interface"
@@ -480,13 +446,11 @@ const eventsQ = useQuery({
                         d.interface_status === "up"
                           ? "text-green-400"
                           : d.interface_status === "down"
-                          ? "text-red-400"
-                          : "text-yellow-400"
+                            ? "text-red-400"
+                            : "text-yellow-400"
                       }
                     />
                   ) : null}
-            
-             
                 </>
               ) : (
                 <p className="py-2 text-xs text-muted-foreground">Sem dados.</p>

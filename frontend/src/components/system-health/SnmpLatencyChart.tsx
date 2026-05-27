@@ -9,6 +9,7 @@ import {
 } from "recharts";
 
 import type { LatencyTelemetry } from "@/lib/system-health/telemetry";
+import { formatAbsoluteTime } from "@/lib/time";
 
 export function SnmpLatencyChart({ latency }: { latency: LatencyTelemetry }) {
   const data = latency.points;
@@ -49,8 +50,7 @@ export function SnmpLatencyChart({ latency }: { latency: LatencyTelemetry }) {
               <XAxis
                 dataKey="t"
                 tickFormatter={(t) => {
-                  const d = new Date(t);
-                  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+                  return formatAbsoluteTime(t, { seconds: false });
                 }}
                 stroke="#525a6e"
                 tick={{ fill: "#525a6e", fontSize: 10, fontFamily: "ui-monospace, monospace" }}
@@ -75,9 +75,7 @@ export function SnmpLatencyChart({ latency }: { latency: LatencyTelemetry }) {
                   fontSize: 11,
                   color: "#E6E8EE",
                 }}
-                labelFormatter={(t) =>
-                  new Date(t as number).toLocaleTimeString("en-GB", { hour12: false })
-                }
+                labelFormatter={(t) => formatAbsoluteTime(t as number)}
                 formatter={(v: number, n) => [`${v} ms`, n]}
               />
               <Line

@@ -1,7 +1,8 @@
 import { SEVERITY_HEX, type OpEvent } from "@/lib/system-health/telemetry";
+import { formatAbsoluteTime } from "@/lib/time";
 
 function formatStamp(d: Date) {
-  return d.toLocaleTimeString("en-GB", { hour12: false });
+  return formatAbsoluteTime(d);
 }
 
 interface AcknowledgeMutation {

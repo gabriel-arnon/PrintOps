@@ -1,14 +1,8 @@
-import { useCallback, useSyncExternalStore } from "react";
+import { useMemo } from "react";
+
+import { useTemporalTick } from "@/hooks/useTemporalTick";
 import { cn } from "@/lib/utils";
-import {
-
-  formatAbsolutePtBr,
-  formatRelativeOperationalTime,
-  getRelativeTimeLiveSnapshot,
-  parseTimeInput,
-  subscribeRelativeTimeLive,
-} from "@/lib/time";
-
+import { formatAbsoluteTime, formatRelativeTime, parseTimeInput } from "@/lib/time";
 
 export interface RelativeTimeProps {
   /** Instant to display relative to now */
@@ -22,23 +16,13 @@ export interface RelativeTimeProps {
  * Operational relative timestamp (pt-BR) with optional live updates and absolute time in `title`.
  */
 export function RelativeTime({ date, live = false, className }: RelativeTimeProps) {
-  const canLive = live && parseTimeInput(date) != null;
+  const parsedDate = useMemo(() => parseTimeInput(date), [date]);
+  const canLive = live && parsedDate != null;
 
-  const subscribe = useCallback(
-    (onStoreChange: () => void) => (canLive ? subscribeRelativeTimeLive(onStoreChange) : () => {}),
-    [canLive],
-  );
+  useTemporalTick(canLive);
 
-  const getSnapshot = useCallback(() => (canLive ? getRelativeTimeLiveSnapshot() : 0), [canLive]);
-
-  const getServerSnapshot = useCallback(() => 0, []);
-
-  useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-
-  const parsedDate = parseTimeInput(date);  
-  const label = parsedDate ? formatRelativeOperationalTime(parsedDate) : "";
-
-  const title = formatAbsolutePtBr(date);
+  const label = parsedDate ? formatRelativeTime(parsedDate) : "";
+  const title = parsedDate ? formatAbsoluteTime(parsedDate, { includeDate: true }) : null;
 
   return (
     <span className={cn("tabular-nums", className)} title={title ?? undefined}>

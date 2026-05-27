@@ -27,6 +27,7 @@ import { SnmpLatencyChart } from "@/components/system-health/SnmpLatencyChart";
 import { EventTimeline } from "@/components/system-health/EventTimeline";
 
 import { useTelemetry } from "@/lib/system-health/telemetry";
+import { safeDateParse } from "@/lib/time";
 
 export const Route = createFileRoute("/system-health")({
   component: SystemHealthPage,
@@ -159,7 +160,9 @@ function SystemHealthPage() {
 
                   lastRun: telemetry.polling.lastRun,
 
-                  nextRunInSec: telemetry.polling.nextRunInSec,
+                  nextRunAt: telemetry.polling.nextRunAt,
+
+                  nextRunInMs: telemetry.polling.nextRunInMs,
 
                   cycleSec: telemetry.polling.cycleSec,
 
@@ -181,7 +184,7 @@ function SystemHealthPage() {
 
                   message: event.message,
 
-                  ts: new Date(event.created_at),
+                  ts: safeDateParse(event.created_at) ?? new Date(0),
 
                   acknowledged: event.acknowledged,
                 }))}

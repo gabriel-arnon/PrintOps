@@ -240,7 +240,7 @@ export function PrintersTable({ printers, loading }: { printers: Printer[]; load
                           <ImageUnitBar percent={p.image_unit_percent} />
                         </TableCell>
                         <TableCell className="hidden text-xs text-muted-foreground lg:table-cell">
-                          <RelativeTime date={p.last_update} />
+                          <RelativeTime date={p.last_update} live />
                         </TableCell>
                         <TableCell className="text-right">
                           <div

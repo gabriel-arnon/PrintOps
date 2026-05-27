@@ -19,9 +19,13 @@ export function PollingMetrics({ polling }: { polling: PollingInfo }) {
     ["last run", formatTime(polling.lastRun)],
     [
       "next run",
-      polling.nextRunInSec === null
-        ? formatCountdown(null)
-        : `in ${formatCountdown(polling.nextRunInSec)}`,
+      polling.nextRunInMs === null ? (
+        formatCountdown(null)
+      ) : (
+        <span title={polling.nextRunAt ? formatTime(polling.nextRunAt) : undefined}>
+          in {formatCountdown(polling.nextRunInMs)}
+        </span>
+      ),
     ],
     ["cycle", `${polling.cycleSec}s`],
     ["targets", polling.targets.toLocaleString("en-US")],

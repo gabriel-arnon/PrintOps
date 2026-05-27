@@ -32,7 +32,7 @@ export function Topbar({
 }: TopbarProps) {
   const fallbackSync = (
     <span className="text-xs tabular-nums text-muted-foreground">
-      Ultima sincronizacao: <RelativeTime date={lastUpdated} live />
+      Última atualização: <RelativeTime date={lastUpdated || null} live />
     </span>
   );
 
