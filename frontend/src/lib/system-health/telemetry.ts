@@ -1,5 +1,5 @@
 import { useTemporalTick } from "@/hooks/useTemporalTick";
-import type { SystemTelemetry } from "@/lib/api";
+import type { EventCategory, SystemTelemetry } from "@/lib/api";
 import {
   calculateNextRun,
   formatAbsoluteTime,
@@ -57,6 +57,10 @@ export interface OpEvent {
   ts: Date;
   severity: Severity;
   component: string;
+  eventType: string;
+  category: EventCategory;
+  groupCount: number;
+  groupLabel: string;
   message: string;
   acknowledged?: boolean;
 }

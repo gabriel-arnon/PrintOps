@@ -420,7 +420,7 @@ def get_printer_events(
 
     printer_id: int,
 
-    limit: int = 25,
+    limit: int = 20,
 
     user=Depends(get_current_user)
 
@@ -429,6 +429,8 @@ def get_printer_events(
     db = SessionLocal()
 
     try:
+
+        capped_limit = min(max(limit, 1), 20)
 
         events = (
 
@@ -442,7 +444,7 @@ def get_printer_events(
                 PrinterEvent.created_at.desc()
             )
 
-            .limit(limit)
+            .limit(capped_limit)
 
             .all()
 
@@ -2039,7 +2041,7 @@ def snmp_walk(
 @app.get("/timeline")
 def get_timeline(
 
-    limit: int = 50,
+    limit: int = 100,
 
     user=Depends(get_current_user)
 
@@ -2048,6 +2050,8 @@ def get_timeline(
     db = SessionLocal()
 
     try:
+
+        capped_limit = min(max(limit, 1), 100)
 
         events = (
 
@@ -2062,7 +2066,7 @@ def get_timeline(
                 PrinterEvent.created_at.desc()
             )
 
-            .limit(limit)
+            .limit(capped_limit)
 
             .all()
 

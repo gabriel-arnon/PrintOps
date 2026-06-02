@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, Activity, Clock } from "lucide-react";
 import {
@@ -38,6 +38,7 @@ import {
   safeDateParse,
 } from "@/lib/time";
 import { deriveOperationalPrinterStatus } from "@/lib/printer-status";
+import { capPrinterEvents, groupEvents } from "@/lib/event-stream";
 import {
   fetchPrinterDetails,
   fetchPrinterHistory,
@@ -245,6 +246,8 @@ export function PrinterDetailsDrawer({
 
     enabled,
 
+    select: capPrinterEvents,
+
     staleTime: 0,
   });
 
@@ -259,6 +262,7 @@ export function PrinterDetailsDrawer({
     .sort((a, b) => a.timestamp - b.timestamp)
     .slice(-50)
     .map(({ point }) => point);
+  const groupedEvents = useMemo(() => groupEvents(eventsQ.data ?? []), [eventsQ.data]);
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -396,7 +400,7 @@ export function PrinterDetailsDrawer({
               </div>
             ) : (
               <div className="overflow-hidden rounded-lg border border-border/60 bg-card/40">
-                {(eventsQ.data ?? []).map((event) => {
+                {groupedEvents.map((event) => {
                   const color =
                     event.severity === "error"
                       ? "#FF5D73"
@@ -415,10 +419,15 @@ export function PrinterDetailsDrawer({
                       <div className="h-2 w-2 rounded-full" style={{ background: color }} />
 
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm text-foreground">{event.message}</div>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <span className="truncate text-sm text-foreground">{event.message}</span>
+                          <span className="shrink-0 rounded border border-border/60 bg-muted/20 px-1.5 py-[1px] font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                            {event.groupLabel}
+                          </span>
+                        </div>
 
                         <div className="mt-1 text-[11px] text-muted-foreground">
-                          {formatRelativeToNow(event.created_at)}
+                          {event.category} · {formatRelativeToNow(event.created_at)}
                         </div>
                       </div>
 

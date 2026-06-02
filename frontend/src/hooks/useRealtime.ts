@@ -2,11 +2,19 @@ import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
+import {
+  makeRealtimeTimelineEvent,
+  mergeEventCollections,
+  TIMELINE_EVENT_LIMIT,
+} from "@/lib/event-stream";
 import { initializeSoundAlerts, playOfflineAlert, playRecoveryAlert } from "@/lib/sound-alerts";
+import type { EventSeverity, TimelineEvent } from "@/lib/api";
 
 type RealtimeEvent = {
   type?: string;
   message?: string;
+  printer?: string;
+  severity?: EventSeverity;
 };
 
 export function useRealtime() {
@@ -54,8 +62,9 @@ export function useRealtime() {
 
       console.log("Realtime event", data);
 
-      queryClient.invalidateQueries({
-        queryKey: ["timeline"],
+      queryClient.setQueryData<TimelineEvent[]>(["timeline"], (current) => {
+        const realtimeEvent = makeRealtimeTimelineEvent(data);
+        return mergeEventCollections(current, [realtimeEvent], TIMELINE_EVENT_LIMIT);
       });
 
       queryClient.invalidateQueries({

@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useMemo } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { IncidentSummary } from "@/components/system-health/IncidentSummary";
@@ -28,6 +29,7 @@ import { EventTimeline } from "@/components/system-health/EventTimeline";
 
 import { useTelemetry } from "@/lib/system-health/telemetry";
 import { safeDateParse } from "@/lib/time";
+import { capTimelineEvents, groupEvents } from "@/lib/event-stream";
 
 export const Route = createFileRoute("/system-health")({
   component: SystemHealthPage,
@@ -65,6 +67,8 @@ function SystemHealthPage() {
 
     queryFn: fetchTimeline,
 
+    select: capTimelineEvents,
+
     refetchInterval: 30_000,
   });
 
@@ -98,6 +102,23 @@ function SystemHealthPage() {
     healthQuery.isFetching ||
     timelineQuery.isFetching ||
     incidentSummaryQuery.isFetching;
+
+  const timelineEvents = useMemo(
+    () =>
+      groupEvents(timelineQuery.data ?? []).map((event) => ({
+        id: String(event.id),
+        severity: event.severity,
+        component: event.printer,
+        message: event.message,
+        eventType: event.event_type,
+        category: event.category,
+        groupCount: event.groupCount,
+        groupLabel: event.groupLabel,
+        ts: safeDateParse(event.created_at) ?? new Date(0),
+        acknowledged: event.acknowledged,
+      })),
+    [timelineQuery.data],
+  );
 
   return (
     <SidebarProvider>
@@ -174,22 +195,7 @@ function SystemHealthPage() {
                 }}
               />
 
-              <EventTimeline
-                events={(timelineQuery.data ?? []).map((event) => ({
-                  id: String(event.id),
-
-                  severity: event.severity,
-
-                  component: event.printer,
-
-                  message: event.message,
-
-                  ts: safeDateParse(event.created_at) ?? new Date(0),
-
-                  acknowledged: event.acknowledged,
-                }))}
-                acknowledgeMutation={acknowledgeMutation}
-              />
+              <EventTimeline events={timelineEvents} acknowledgeMutation={acknowledgeMutation} />
             </section>
           </main>
         </div>

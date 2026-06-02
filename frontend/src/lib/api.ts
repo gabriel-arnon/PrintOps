@@ -43,6 +43,7 @@ export interface HealthStatus {
 
 export type SystemStatus = "ok" | "warn" | "error";
 export type EventSeverity = "info" | "warn" | "error";
+export type EventCategory = "INCIDENT" | "OPERATIONAL" | "USER";
 
 export interface SystemTelemetryService {
   id: string;
@@ -104,6 +105,7 @@ export interface TimelineEvent {
   id: number;
   printer: string;
   event_type: string;
+  category?: EventCategory;
   severity: EventSeverity;
   message: string;
   acknowledged: boolean;
@@ -113,6 +115,7 @@ export interface TimelineEvent {
 export interface PrinterEvent {
   id: number;
   event_type: string;
+  category?: EventCategory;
   severity: EventSeverity;
   message: string;
   acknowledged: boolean;
@@ -181,11 +184,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export async function fetchTimeline(): Promise<TimelineEvent[]> {
-  return await request<TimelineEvent[]>("/timeline");
+  return await request<TimelineEvent[]>("/timeline?limit=100");
 }
 
 export async function fetchPrinterEvents(printerId: number): Promise<PrinterEvent[]> {
-  return await request<PrinterEvent[]>(`/printers/${printerId}/events`);
+  return await request<PrinterEvent[]>(`/printers/${printerId}/events?limit=20`);
 }
 
 export async function fetchActiveIncidents(): Promise<ActiveIncident[]> {
