@@ -1614,6 +1614,125 @@ def system_health(
         db.close()
 
 
+@app.get("/system/snmp-latency")
+def system_snmp_latency(
+
+    window_minutes: int = 30,
+
+    bucket_seconds: int = 60,
+
+    user=Depends(get_current_user)
+
+):
+
+    if window_minutes <= 0:
+
+        raise HTTPException(
+            status_code=400,
+            detail="window_minutes must be greater than 0"
+        )
+
+    if bucket_seconds <= 0:
+
+        raise HTTPException(
+            status_code=400,
+            detail="bucket_seconds must be greater than 0"
+        )
+
+    db = SessionLocal()
+
+    reason = "No SNMP latency samples found for selected window."
+
+    now = datetime.now(timezone.utc)
+
+    window_start = now - timedelta(minutes=window_minutes)
+
+    try:
+
+        rows = (
+
+            db.query(
+                PrinterMetric.created_at,
+                PrinterMetric.snmp_latency_ms
+            )
+
+            .filter(
+                PrinterMetric.snmp_latency_ms.isnot(None),
+                PrinterMetric.created_at >= window_start
+            )
+
+            .order_by(
+                PrinterMetric.created_at.asc()
+            )
+
+            .all()
+
+        )
+
+        if not rows:
+
+            return {
+                "available": False,
+                "window_minutes": window_minutes,
+                "bucket_seconds": bucket_seconds,
+                "points": [],
+                "reason": reason,
+            }
+
+        buckets = {}
+
+        for created_at, snmp_latency_ms in rows:
+
+            if created_at.tzinfo is None:
+
+                created_at = created_at.replace(tzinfo=timezone.utc)
+
+            else:
+
+                created_at = created_at.astimezone(timezone.utc)
+
+            bucket_epoch = (
+                int(created_at.timestamp()) // bucket_seconds
+            ) * bucket_seconds
+
+            buckets.setdefault(
+                bucket_epoch,
+                []
+            ).append(float(snmp_latency_ms))
+
+        points = []
+
+        for bucket_epoch in sorted(buckets):
+
+            values = sorted(buckets[bucket_epoch])
+
+            count = len(values)
+
+            p95_index = max(
+                ((count * 95 + 99) // 100) - 1,
+                0
+            )
+
+            points.append({
+                "t": bucket_epoch * 1000,
+                "avg": round(sum(values) / count, 2),
+                "p95": round(values[p95_index], 2),
+                "count": count,
+            })
+
+        return {
+            "available": True,
+            "window_minutes": window_minutes,
+            "bucket_seconds": bucket_seconds,
+            "points": points,
+            "reason": None,
+        }
+
+    finally:
+
+        db.close()
+
+
 @app.get("/system/telemetry")
 def system_telemetry(
 
