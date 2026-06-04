@@ -7,7 +7,7 @@ import { fetchIncidentSummary } from "@/lib/api";
 
 import { acknowledgeEvent } from "@/lib/api";
 
-import { fetchHealth, fetchSystemTelemetry } from "@/lib/api";
+import { fetchHealth, fetchSnmpLatency, fetchSystemTelemetry } from "@/lib/api";
 import { fetchTimeline } from "@/lib/api";
 
 import { ActiveIncidents } from "@/components/system-health/ActiveIncidents";
@@ -31,6 +31,9 @@ import { useTelemetry } from "@/lib/system-health/telemetry";
 import { safeDateParse } from "@/lib/time";
 import { capTimelineEvents, groupEvents } from "@/lib/event-stream";
 
+const SNMP_LATENCY_WINDOW_MINUTES = 30;
+const SNMP_LATENCY_BUCKET_SECONDS = 60;
+
 export const Route = createFileRoute("/system-health")({
   component: SystemHealthPage,
 });
@@ -53,6 +56,14 @@ function SystemHealthPage() {
   });
 
   const telemetry = useTelemetry(systemTelemetryQuery.data);
+
+  const snmpLatencyQuery = useQuery({
+    queryKey: ["snmp-latency", SNMP_LATENCY_WINDOW_MINUTES, SNMP_LATENCY_BUCKET_SECONDS],
+
+    queryFn: () => fetchSnmpLatency(SNMP_LATENCY_WINDOW_MINUTES, SNMP_LATENCY_BUCKET_SECONDS),
+
+    refetchInterval: 30_000,
+  });
 
   const healthQuery = useQuery({
     queryKey: ["health"],
@@ -91,6 +102,7 @@ function SystemHealthPage() {
   const onRefresh = () => {
     activeIncidentsQuery.refetch();
     systemTelemetryQuery.refetch();
+    snmpLatencyQuery.refetch();
     healthQuery.refetch();
     timelineQuery.refetch();
     incidentSummaryQuery.refetch();
@@ -99,6 +111,7 @@ function SystemHealthPage() {
   const refreshing =
     activeIncidentsQuery.isFetching ||
     systemTelemetryQuery.isFetching ||
+    snmpLatencyQuery.isFetching ||
     healthQuery.isFetching ||
     timelineQuery.isFetching ||
     incidentSummaryQuery.isFetching;
@@ -171,7 +184,20 @@ function SystemHealthPage() {
             <section className="grid grid-cols-1 gap-4 xl:grid-cols-[320px_1fr]">
               <FleetDonut fleet={telemetry.fleet} />
 
-              <SnmpLatencyChart latency={telemetry.latency} />
+              <SnmpLatencyChart
+                latency={
+                  snmpLatencyQuery.data ?? {
+                    available: false,
+                    window_minutes: SNMP_LATENCY_WINDOW_MINUTES,
+                    bucket_seconds: SNMP_LATENCY_BUCKET_SECONDS,
+                    points: [],
+                    reason: snmpLatencyQuery.isError
+                      ? "Unable to load SNMP latency samples."
+                      : "Loading SNMP latency samples.",
+                  }
+                }
+                loading={snmpLatencyQuery.isLoading}
+              />
             </section>
 
             <section className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[320px_1fr]">

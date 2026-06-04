@@ -8,14 +8,43 @@ import {
   YAxis,
 } from "recharts";
 
-import type { LatencyTelemetry } from "@/lib/system-health/telemetry";
+import type { SnmpLatencyPoint, SnmpLatencyResponse } from "@/lib/api";
 import { formatAbsoluteTime } from "@/lib/time";
 
-export function SnmpLatencyChart({ latency }: { latency: LatencyTelemetry }) {
-  const data = latency.points;
+function isValidLatencyPoint(point: SnmpLatencyPoint): boolean {
+  return (
+    Number.isFinite(point.t) &&
+    point.t > 0 &&
+    Number.isFinite(point.avg) &&
+    point.avg > 0 &&
+    Number.isFinite(point.p95) &&
+    point.p95 > 0 &&
+    Number.isFinite(point.count) &&
+    point.count > 0
+  );
+}
+
+function formatLatency(value: number): string {
+  if (!Number.isFinite(value)) return "0";
+  if (value >= 1000) return value.toFixed(0);
+  return value.toFixed(2);
+}
+
+export function SnmpLatencyChart({
+  latency,
+  loading = false,
+}: {
+  latency: SnmpLatencyResponse;
+  loading?: boolean;
+}) {
+  const data = latency.available ? latency.points.filter(isValidLatencyPoint) : [];
+  const hasData = latency.available && data.length > 0;
   const last = data[data.length - 1];
   const avgNow = last?.avg ?? 0;
   const p95Now = last?.p95 ?? 0;
+  const reason = loading
+    ? "Loading SNMP latency samples."
+    : (latency.reason ?? "No SNMP latency samples found for selected window.");
 
   return (
     <section className="flex h-full flex-col border border-[#1F2330] bg-[#11131A]">
@@ -24,26 +53,26 @@ export function SnmpLatencyChart({ latency }: { latency: LatencyTelemetry }) {
           SNMP Latency - last 30m
         </span>
         <div className="flex items-center gap-4 font-mono text-[11px] tabular-nums">
-          {latency.available ? (
+          {hasData ? (
             <>
               <span className="flex items-center gap-1.5 text-[#7A8194]">
                 <span className="h-[2px] w-3" style={{ background: "#5B8CFF" }} />
-                avg <span className="text-[#E6E8EE]">{avgNow} ms</span>
+                avg <span className="text-[#E6E8EE]">{formatLatency(avgNow)} ms</span>
               </span>
               <span className="flex items-center gap-1.5 text-[#7A8194]">
                 <span className="h-[2px] w-3" style={{ background: "#F5A524" }} />
-                p95 <span className="text-[#E6E8EE]">{p95Now} ms</span>
+                p95 <span className="text-[#E6E8EE]">{formatLatency(p95Now)} ms</span>
               </span>
             </>
           ) : (
             <span className="rounded-sm border border-[#F5A52433] bg-[#F5A52411] px-1.5 py-[1px] text-[#F5A524]">
-              not collected
+              {loading ? "loading" : "not collected"}
             </span>
           )}
         </div>
       </header>
       <div className="flex-1 p-2">
-        {latency.available && data.length > 0 ? (
+        {hasData ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="#1F2330" vertical={false} />
@@ -63,8 +92,8 @@ export function SnmpLatencyChart({ latency }: { latency: LatencyTelemetry }) {
                 tick={{ fill: "#525a6e", fontSize: 10, fontFamily: "ui-monospace, monospace" }}
                 tickLine={false}
                 axisLine={{ stroke: "#1F2330" }}
-                width={36}
-                tickFormatter={(v) => `${v}`}
+                width={52}
+                tickFormatter={(v) => formatLatency(v as number)}
               />
               <Tooltip
                 contentStyle={{
@@ -76,7 +105,7 @@ export function SnmpLatencyChart({ latency }: { latency: LatencyTelemetry }) {
                   color: "#E6E8EE",
                 }}
                 labelFormatter={(t) => formatAbsoluteTime(t as number)}
-                formatter={(v: number, n) => [`${v} ms`, n]}
+                formatter={(v: number, n) => [`${formatLatency(v)} ms`, n]}
               />
               <Line
                 type="monotone"
@@ -98,7 +127,7 @@ export function SnmpLatencyChart({ latency }: { latency: LatencyTelemetry }) {
           </ResponsiveContainer>
         ) : (
           <div className="flex h-full items-center justify-center px-6 text-center font-mono text-[11px] leading-5 text-[#7A8194]">
-            {latency.reason}
+            {reason}
           </div>
         )}
       </div>

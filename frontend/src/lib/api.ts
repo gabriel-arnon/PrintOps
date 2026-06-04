@@ -151,6 +151,21 @@ export interface SystemHealthData {
   last_discovery_scan: string | null;
 }
 
+export interface SnmpLatencyPoint {
+  t: number;
+  avg: number;
+  p95: number;
+  count: number;
+}
+
+export interface SnmpLatencyResponse {
+  available: boolean;
+  window_minutes: number;
+  bucket_seconds: number;
+  points: SnmpLatencyPoint[];
+  reason: string | null;
+}
+
 import { getToken, redirectToLogin } from "./auth";
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "");
@@ -236,6 +251,18 @@ export async function fetchSystemHealth(): Promise<SystemHealthData> {
 
 export async function fetchSystemTelemetry(): Promise<SystemTelemetry> {
   return await request<SystemTelemetry>("/system/telemetry");
+}
+
+export async function fetchSnmpLatency(
+  windowMinutes = 30,
+  bucketSeconds = 60,
+): Promise<SnmpLatencyResponse> {
+  const params = new URLSearchParams({
+    window_minutes: String(windowMinutes),
+    bucket_seconds: String(bucketSeconds),
+  });
+
+  return await request<SnmpLatencyResponse>(`/system/snmp-latency?${params.toString()}`);
 }
 
 export interface DiscoveredPrinter {
