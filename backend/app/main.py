@@ -536,6 +536,8 @@ def run_collect():
 
         try:
 
+            snmp_started_at = time.perf_counter()
+
             toner_max = int(get_snmp_data(
                 printer.ip,
                 "1.3.6.1.2.1.43.11.1.1.8.1.1"
@@ -568,6 +570,14 @@ def run_collect():
                 printer.ip,
                 "1.3.6.1.2.1.43.10.2.1.4.1.1"
             ))
+
+            snmp_latency_ms = round(
+                max(
+                    (time.perf_counter() - snmp_started_at) * 1000,
+                    0.0
+                ),
+                2
+            )
 
                         
             last_metric = (
@@ -630,7 +640,9 @@ def run_collect():
 
                 pages=pages,
 
-                status="online"
+                status="online",
+
+                snmp_latency_ms=snmp_latency_ms
 
             )
 
@@ -709,7 +721,9 @@ def run_collect():
 
                 pages=last_pages,
 
-                status="offline"
+                status="offline",
+
+                snmp_latency_ms=None
 
             )
 

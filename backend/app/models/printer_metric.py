@@ -3,6 +3,7 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import ForeignKey
 from sqlalchemy import DateTime
+from sqlalchemy import Float
 
 from datetime import datetime
 
@@ -23,6 +24,8 @@ class PrinterMetric(Base):
     pages = Column(Integer)
 
     status = Column(String)
+
+    snmp_latency_ms = Column(Float, nullable=True)
 
     created_at = Column(
         DateTime,
