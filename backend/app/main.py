@@ -142,6 +142,47 @@ DISCOVERY_BASE_IP = os.getenv("DISCOVERY_BASE_IP", "192.168.5.")
 COLLECT_INTERVAL_MINUTES = int(
     os.getenv("COLLECT_INTERVAL_MINUTES", "3")
 )
+GLOBAL_HEALTHY_SCORE = 80
+GLOBAL_DEGRADED_SCORE = 60
+LOW_TONER_SCORE_THRESHOLD = 10
+LOW_IMAGE_UNIT_SCORE_THRESHOLD = 10
+
+
+def status_from_fleet_health_score(score):
+
+    if score >= GLOBAL_HEALTHY_SCORE:
+
+        return "ok"
+
+    if score >= GLOBAL_DEGRADED_SCORE:
+
+        return "warn"
+
+    return "error"
+
+
+def calculate_printer_health_score(metric):
+
+    score = 100
+
+    if not metric or metric.status == "offline":
+
+        score -= 100
+
+    else:
+
+        if metric.toner_percent is not None and metric.toner_percent < LOW_TONER_SCORE_THRESHOLD:
+
+            score -= 20
+
+        if (
+            metric.image_unit_percent is not None
+            and metric.image_unit_percent < LOW_IMAGE_UNIT_SCORE_THRESHOLD
+        ):
+
+            score -= 20
+
+    return max(0, min(100, score))
 
  
 # =========================
@@ -1583,6 +1624,7 @@ def system_telemetry(
 
         online = 0
         offline = 0
+        fleet_score_total = 0
 
         latest_metric = (
 
@@ -1622,6 +1664,8 @@ def system_telemetry(
 
                 offline += 1
 
+            fleet_score_total += calculate_printer_health_score(printer_metric)
+
         success_rate = round(
 
             (online / total) * 100,
@@ -1629,6 +1673,14 @@ def system_telemetry(
             1
 
         ) if total > 0 else 0
+
+        health_score = round(
+
+            fleet_score_total / total,
+
+            2
+
+        ) if total > 0 else 100
 
         event_window_start = now - timedelta(hours=24)
 
@@ -1707,6 +1759,8 @@ def system_telemetry(
 
             snmp_status = "error"
 
+        global_status = status_from_fleet_health_score(health_score)
+
         last_run = latest_metric.created_at if latest_metric else None
 
         return {
@@ -1754,6 +1808,9 @@ def system_telemetry(
                 "degraded": 0,
                 "total": total,
             },
+
+            "global_status": global_status,
+            "health_score": health_score,
 
             "polling": {
                 "discovery_status": snmp_status,
@@ -1821,6 +1878,9 @@ def system_telemetry(
                 "degraded": 0,
                 "total": 0,
             },
+
+            "global_status": "error",
+            "health_score": 0,
 
             "polling": {
                 "discovery_status": "error",

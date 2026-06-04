@@ -13,6 +13,9 @@ export type Status = "ok" | "warn" | "error";
 export type Severity = "info" | "warn" | "error";
 export type TelemetrySource = "real" | "client-generated" | "not-collected";
 
+const GLOBAL_HEALTHY_SCORE = 80;
+const GLOBAL_DEGRADED_SCORE = 60;
+
 export interface ServiceHealth {
   id: string;
   name: string;
@@ -88,6 +91,13 @@ function aggregateStatus(services: ServiceHealth[]): Status {
   return "ok";
 }
 
+function statusFromFleetHealthScore(score: number | null | undefined): Status | null {
+  if (typeof score !== "number" || !Number.isFinite(score)) return null;
+  if (score >= GLOBAL_HEALTHY_SCORE) return "ok";
+  if (score >= GLOBAL_DEGRADED_SCORE) return "warn";
+  return "error";
+}
+
 function emptyTelemetry(now: Date): Telemetry {
   return {
     now,
@@ -147,6 +157,7 @@ export function useTelemetry(data?: SystemTelemetry): Telemetry {
     spark: stableSpark(service.value),
     source: "real",
   }));
+  const scoreStatus = statusFromFleetHealthScore(data.health_score);
 
   return {
     now,
@@ -174,7 +185,7 @@ export function useTelemetry(data?: SystemTelemetry): Telemetry {
       reason: data.snmp_latency.reason,
     },
     events: [],
-    global: aggregateStatus(services),
+    global: data.global_status ?? scoreStatus ?? aggregateStatus(services),
     realtimeConnections: data.realtime_connections,
   };
 }
@@ -195,7 +206,7 @@ export function formatCountdown(ms: number | null): string {
 export const STATUS_LABEL: Record<Status, string> = {
   ok: "Healthy",
   warn: "Degraded",
-  error: "Down",
+  error: "Critical",
 };
 
 export const STATUS_HEX: Record<Status, string> = {

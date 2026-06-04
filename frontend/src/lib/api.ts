@@ -96,6 +96,8 @@ export interface SystemTelemetry {
   realtime_connections: number;
   services: SystemTelemetryService[];
   fleet: SystemTelemetryFleet;
+  global_status?: SystemStatus;
+  health_score?: number;
   polling: SystemTelemetryPolling;
   incidents: SystemTelemetryIncidentCounts;
   snmp_latency: SystemTelemetryLatency;
