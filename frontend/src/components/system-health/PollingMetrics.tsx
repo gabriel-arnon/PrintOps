@@ -1,10 +1,25 @@
 import {
-  formatCountdown,
   formatTime,
   STATUS_HEX,
   STATUS_LABEL,
   type PollingInfo,
 } from "@/lib/system-health/telemetry";
+
+function formatDurationSeconds(totalSeconds: number): string {
+  const clampedSeconds = Math.max(0, Math.floor(totalSeconds));
+  const minutes = Math.floor(clampedSeconds / 60);
+  const seconds = clampedSeconds % 60;
+
+  if (minutes === 0) return `${seconds}s`;
+  if (seconds === 0) return `${minutes}m`;
+  return `${minutes}m ${seconds}s`;
+}
+
+function formatNextRun(ms: number | null): string {
+  if (ms === null) return "pending";
+  if (ms <= 0) return "due now";
+  return formatDurationSeconds(ms / 1_000);
+}
 
 export function PollingMetrics({ polling }: { polling: PollingInfo }) {
   const color = STATUS_HEX[polling.discoveryStatus];
@@ -20,26 +35,26 @@ export function PollingMetrics({ polling }: { polling: PollingInfo }) {
     [
       "next run",
       polling.nextRunInMs === null ? (
-        formatCountdown(null)
+        formatNextRun(null)
       ) : (
         <span title={polling.nextRunAt ? formatTime(polling.nextRunAt) : undefined}>
-          in {formatCountdown(polling.nextRunInMs)}
+          {formatNextRun(polling.nextRunInMs)}
         </span>
       ),
     ],
-    ["cycle", `${polling.cycleSec}s`],
+    ["cycle", formatDurationSeconds(polling.cycleSec)],
     ["targets", polling.targets.toLocaleString("en-US")],
     ["success rate", `${polling.successRate.toFixed(1)}%`],
   ];
   return (
-    <section className="flex h-full flex-col border border-[#1F2330] bg-[#11131A]">
+    <section className="flex h-[320px] flex-col overflow-hidden border border-[#1F2330] bg-[#11131A]">
       <header className="flex items-center justify-between border-b border-[#1F2330] px-4 py-2.5">
         <span className="text-[11px] uppercase tracking-[0.14em] text-[#7A8194]">
           Polling Metrics
         </span>
         <span className="font-mono text-[11px] tabular-nums text-[#525a6e]">snmp-poller-01</span>
       </header>
-      <dl className="grid flex-1 grid-cols-1 gap-y-1.5 p-4">
+      <dl className="grid flex-1 grid-cols-1 gap-y-1.5 overflow-y-auto p-4">
         {rows.map(([k, v]) => (
           <div
             key={k}
