@@ -47,7 +47,7 @@ export function PollingMetrics({ polling }: { polling: PollingInfo }) {
     ["success rate", `${polling.successRate.toFixed(1)}%`],
   ];
   return (
-    <section className="flex h-[320px] flex-col overflow-hidden border border-[#1F2330] bg-[#11131A]">
+    <section className="flex h-full min-h-[455px] flex-col overflow-hidden border border-[#1F2330] bg-[#11131A]">
       <header className="flex items-center justify-between border-b border-[#1F2330] px-4 py-2.5">
         <span className="text-[11px] uppercase tracking-[0.14em] text-[#7A8194]">
           Polling Metrics

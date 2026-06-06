@@ -200,7 +200,7 @@ function SystemHealthPage() {
               />
             </section>
 
-            <section className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[320px_1fr]">
+            <section className="grid grid-cols-1 items-stretch gap-4 xl:grid-cols-[320px_1fr]">
               <PollingMetrics
                 polling={{
                   discoveryStatus: telemetry.polling.discoveryStatus,
