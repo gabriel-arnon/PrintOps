@@ -22,6 +22,7 @@ interface AppSidebarProps {
 const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, enabled: true },
   { title: "System Health", url: "/system-health", icon: Activity, enabled: true },
+  { title: "Alert Center", url: "/alert-center", icon: Bell, enabled: true, badgeKey: "alerts" },
   { title: "Impressoras", url: "/printers", icon: Printer, enabled: false },
   { title: "Relatórios", url: "/reports", icon: BarChart3, enabled: false },
 ] as const;
@@ -72,9 +73,17 @@ export function AppSidebar({ alertCount = 0 }: AppSidebarProps) {
                       className={cn(!item.enabled && "cursor-not-allowed opacity-50")}
                     >
                       {item.enabled ? (
-                        <Link to={item.url} className="flex items-center gap-2">
+                        <Link to={item.url} className="relative flex items-center gap-2">
                           <item.icon className="h-4 w-4" />
-                          {!collapsed && <span>{item.title}</span>}
+                          {!collapsed && <span className="flex-1">{item.title}</span>}
+                          {"badgeKey" in item && alertCount > 0 && !collapsed && (
+                            <span className="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-semibold text-destructive-foreground tabular-nums">
+                              {alertCount}
+                            </span>
+                          )}
+                          {"badgeKey" in item && alertCount > 0 && collapsed && (
+                            <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-destructive ring-2 ring-sidebar" />
+                          )}
                         </Link>
                       ) : (
                         <div className="flex items-center gap-2">
