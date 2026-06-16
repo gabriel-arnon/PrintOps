@@ -14,6 +14,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as PrintersRouteImport } from './routes/printers'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as AnalyticsRouteImport } from './routes/analytics'
 import { Route as AlertsRouteImport } from './routes/alerts'
 import { Route as AlertCenterRouteImport } from './routes/alert-center'
 import { Route as IndexRouteImport } from './routes/index'
@@ -43,6 +44,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AnalyticsRoute = AnalyticsRouteImport.update({
+  id: '/analytics',
+  path: '/analytics',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AlertsRoute = AlertsRouteImport.update({
   id: '/alerts',
   path: '/alerts',
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/alert-center': typeof AlertCenterRoute
   '/alerts': typeof AlertsRoute
+  '/analytics': typeof AnalyticsRoute
   '/login': typeof LoginRoute
   '/printers': typeof PrintersRoute
   '/reports': typeof ReportsRoute
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/alert-center': typeof AlertCenterRoute
   '/alerts': typeof AlertsRoute
+  '/analytics': typeof AnalyticsRoute
   '/login': typeof LoginRoute
   '/printers': typeof PrintersRoute
   '/reports': typeof ReportsRoute
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/alert-center': typeof AlertCenterRoute
   '/alerts': typeof AlertsRoute
+  '/analytics': typeof AnalyticsRoute
   '/login': typeof LoginRoute
   '/printers': typeof PrintersRoute
   '/reports': typeof ReportsRoute
@@ -96,6 +105,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alert-center'
     | '/alerts'
+    | '/analytics'
     | '/login'
     | '/printers'
     | '/reports'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alert-center'
     | '/alerts'
+    | '/analytics'
     | '/login'
     | '/printers'
     | '/reports'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/'
     | '/alert-center'
     | '/alerts'
+    | '/analytics'
     | '/login'
     | '/printers'
     | '/reports'
@@ -127,6 +139,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AlertCenterRoute: typeof AlertCenterRoute
   AlertsRoute: typeof AlertsRoute
+  AnalyticsRoute: typeof AnalyticsRoute
   LoginRoute: typeof LoginRoute
   PrintersRoute: typeof PrintersRoute
   ReportsRoute: typeof ReportsRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/analytics': {
+      id: '/analytics'
+      path: '/analytics'
+      fullPath: '/analytics'
+      preLoaderRoute: typeof AnalyticsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/alerts': {
       id: '/alerts'
       path: '/alerts'
@@ -199,6 +219,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AlertCenterRoute: AlertCenterRoute,
   AlertsRoute: AlertsRoute,
+  AnalyticsRoute: AnalyticsRoute,
   LoginRoute: LoginRoute,
   PrintersRoute: PrintersRoute,
   ReportsRoute: ReportsRoute,

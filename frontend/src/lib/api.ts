@@ -166,6 +166,90 @@ export interface SnmpLatencyResponse {
   reason: string | null;
 }
 
+export interface AnalyticsRankItem {
+  printer_id: number;
+  printer: string;
+}
+
+export interface AnalyticsProblemPrinter extends AnalyticsRankItem {
+  incidents: number;
+}
+
+export interface AnalyticsMttrItem extends AnalyticsRankItem {
+  avg_recovery_seconds: number;
+  avg_recovery_time: string;
+  recoveries: number;
+}
+
+export interface AnalyticsMtbfItem extends AnalyticsRankItem {
+  avg_between_failures_seconds: number;
+  avg_between_failures: string;
+  incidents: number;
+}
+
+export interface AnalyticsAvailabilityItem extends AnalyticsRankItem {
+  availability_percent: number;
+  samples: number;
+}
+
+export interface AnalyticsConsumableRiskItem extends AnalyticsRankItem {
+  current_percent: number | null;
+  predicted_depletion_days: number | null;
+  daily_consumption_rate: number;
+}
+
+export interface AnalyticsMonthlyConsumptionPoint {
+  month: string;
+  toner: number;
+  image_unit: number;
+}
+
+export interface AnalyticsPrintVolume {
+  days_7: number;
+  days_30: number;
+  days_90: number;
+}
+
+export interface AnalyticsMostUsedPrinter extends AnalyticsRankItem {
+  pages_printed: number;
+}
+
+export interface AnalyticsPeakHourPoint {
+  hour: number;
+  pages_printed: number;
+}
+
+export interface AnalyticsGrowth {
+  page_volume_percent: number | null;
+  incident_percent: number | null;
+}
+
+export interface AnalyticsSummary {
+  generated_at: string;
+  windows: {
+    reliability_days: number;
+    consumables_days: number;
+    capacity_days: number;
+  };
+  reliability: {
+    top_problematic: AnalyticsProblemPrinter[];
+    mttr: AnalyticsMttrItem[];
+    mtbf: AnalyticsMtbfItem[];
+    availability: AnalyticsAvailabilityItem[];
+  };
+  consumables: {
+    toner_risk: AnalyticsConsumableRiskItem[];
+    image_unit_risk: AnalyticsConsumableRiskItem[];
+    monthly_consumption: AnalyticsMonthlyConsumptionPoint[];
+  };
+  capacity: {
+    print_volume: AnalyticsPrintVolume;
+    most_used: AnalyticsMostUsedPrinter[];
+    peak_hours: AnalyticsPeakHourPoint[];
+    growth: AnalyticsGrowth;
+  };
+}
+
 import { getToken, redirectToLogin } from "./auth";
 
 const BASE_URL = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, "");
@@ -263,6 +347,10 @@ export async function fetchSnmpLatency(
   });
 
   return await request<SnmpLatencyResponse>(`/system/snmp-latency?${params.toString()}`);
+}
+
+export async function fetchAnalyticsSummary(): Promise<AnalyticsSummary> {
+  return await request<AnalyticsSummary>("/analytics/summary");
 }
 
 export interface DiscoveredPrinter {

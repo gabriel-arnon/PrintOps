@@ -6,6 +6,8 @@ from concurrent.futures import (
     as_completed
 )
 
+from collections import defaultdict
+import math
 import os
 import platform
 import time
@@ -2227,6 +2229,612 @@ def snmp_walk(
 
 
  
+# =========================
+# ANALYTICS
+# =========================
+
+@app.get("/analytics/summary")
+def get_analytics_summary(
+
+    user=Depends(get_current_user)
+
+):
+
+    db = SessionLocal()
+
+    now = datetime.now(timezone.utc)
+
+    reliability_start = now - timedelta(days=30)
+
+    capacity_start = now - timedelta(days=90)
+
+    growth_start = now - timedelta(days=60)
+
+    MAX_PAGES_PER_HOUR = 3000
+
+    def as_utc(value):
+
+        if value is None:
+
+            return None
+
+        if value.tzinfo is None:
+
+            return value.replace(tzinfo=timezone.utc)
+
+        return value.astimezone(timezone.utc)
+
+    def percent_growth(current, previous):
+
+        if previous == 0:
+
+            return None if current == 0 else 100.0
+
+        return round(((current - previous) / previous) * 100, 2)
+
+    def format_duration(seconds):
+
+        if seconds is None:
+
+            return "Insufficient data"
+
+        seconds = max(int(seconds), 0)
+
+        days = seconds // 86400
+
+        hours = (seconds % 86400) // 3600
+
+        minutes = (seconds % 3600) // 60
+
+        if days > 0:
+
+            return f"{days}d {hours}h"
+
+        if hours > 0:
+
+            return f"{hours}h {minutes}m"
+
+        return f"{minutes}m"
+
+    def valid_page_delta(
+        previous_pages,
+        current_pages,
+        previous_created_at,
+        current_created_at
+    ):
+
+        if previous_pages is None or current_pages is None:
+
+            return 0
+
+        if previous_created_at is None or current_created_at is None:
+
+            return 0
+
+        delta = int(current_pages) - int(previous_pages)
+
+        if delta <= 0:
+
+            return 0
+
+        elapsed_hours = (
+            current_created_at - previous_created_at
+        ).total_seconds() / 3600
+
+        if elapsed_hours <= 0:
+
+            return 0
+
+        if delta / elapsed_hours > MAX_PAGES_PER_HOUR:
+
+            return 0
+
+        return delta
+
+    def positive_drop(previous_value, current_value):
+
+        if previous_value is None or current_value is None:
+
+            return 0.0
+
+        drop = float(previous_value) - float(current_value)
+
+        return drop if drop > 0 else 0.0
+
+    try:
+
+        printers = db.query(Printer).all()
+
+        printer_names = {
+            printer.id: printer.name
+            for printer in printers
+        }
+
+        event_rows = (
+
+            db.query(
+                PrinterEvent.printer_id,
+                PrinterEvent.event_type,
+                PrinterEvent.severity,
+                PrinterEvent.created_at,
+            )
+
+            .filter(
+                PrinterEvent.created_at >= growth_start
+            )
+
+            .order_by(
+                PrinterEvent.printer_id.asc(),
+                PrinterEvent.created_at.asc()
+            )
+
+            .all()
+
+        )
+
+        metrics = (
+
+            db.query(
+                PrinterMetric.printer_id,
+                PrinterMetric.toner_percent,
+                PrinterMetric.image_unit_percent,
+                PrinterMetric.pages,
+                PrinterMetric.status,
+                PrinterMetric.created_at,
+            )
+
+            .filter(
+                PrinterMetric.created_at >= capacity_start
+            )
+
+            .order_by(
+                PrinterMetric.printer_id.asc(),
+                PrinterMetric.created_at.asc()
+            )
+
+            .all()
+
+        )
+
+        events_by_printer = defaultdict(list)
+
+        offline_counts = defaultdict(int)
+
+        current_incidents = 0
+
+        previous_incidents = 0
+
+        previous_growth_start = now - timedelta(days=60)
+
+        for row in event_rows:
+
+            created_at = as_utc(row.created_at)
+
+            if created_at is None:
+
+                continue
+
+            event = {
+                "printer_id": row.printer_id,
+                "event_type": row.event_type,
+                "severity": row.severity,
+                "created_at": created_at,
+            }
+
+            events_by_printer[row.printer_id].append(event)
+
+            if row.event_type == "printer_offline":
+
+                if created_at >= reliability_start:
+
+                    offline_counts[row.printer_id] += 1
+
+                    current_incidents += 1
+
+                elif created_at >= previous_growth_start:
+
+                    previous_incidents += 1
+
+        top_problematic = [
+            {
+                "printer_id": printer_id,
+                "printer": printer_names.get(printer_id, "Unknown"),
+                "incidents": count,
+            }
+            for printer_id, count in sorted(
+                offline_counts.items(),
+                key=lambda item: item[1],
+                reverse=True
+            )[:10]
+        ]
+
+        mttr_rows = []
+
+        mtbf_rows = []
+
+        for printer_id, events in events_by_printer.items():
+
+            window_events = [
+                event
+                for event in events
+                if event["created_at"] >= reliability_start
+            ]
+
+            open_failure = None
+
+            recovery_durations = []
+
+            failure_times = []
+
+            for event in window_events:
+
+                if event["event_type"] == "printer_offline":
+
+                    failure_times.append(event["created_at"])
+
+                    if open_failure is None:
+
+                        open_failure = event["created_at"]
+
+                elif event["event_type"] == "printer_recovered" and open_failure is not None:
+
+                    duration = (
+                        event["created_at"] - open_failure
+                    ).total_seconds()
+
+                    if duration >= 0:
+
+                        recovery_durations.append(duration)
+
+                    open_failure = None
+
+            if recovery_durations:
+
+                avg_recovery_seconds = sum(recovery_durations) / len(recovery_durations)
+
+                mttr_rows.append({
+                    "printer_id": printer_id,
+                    "printer": printer_names.get(printer_id, "Unknown"),
+                    "avg_recovery_seconds": round(avg_recovery_seconds, 2),
+                    "avg_recovery_time": format_duration(avg_recovery_seconds),
+                    "recoveries": len(recovery_durations),
+                })
+
+            if len(failure_times) >= 2:
+
+                intervals = [
+                    (failure_times[index] - failure_times[index - 1]).total_seconds()
+                    for index in range(1, len(failure_times))
+                ]
+
+                intervals = [
+                    interval
+                    for interval in intervals
+                    if interval >= 0
+                ]
+
+                if intervals:
+
+                    avg_between_failures_seconds = sum(intervals) / len(intervals)
+
+                    mtbf_rows.append({
+                        "printer_id": printer_id,
+                        "printer": printer_names.get(printer_id, "Unknown"),
+                        "avg_between_failures_seconds": round(avg_between_failures_seconds, 2),
+                        "avg_between_failures": format_duration(avg_between_failures_seconds),
+                        "incidents": len(failure_times),
+                    })
+
+        mttr = sorted(
+            mttr_rows,
+            key=lambda row: row["avg_recovery_seconds"],
+            reverse=True
+        )[:10]
+
+        mtbf = sorted(
+            mtbf_rows,
+            key=lambda row: row["avg_between_failures_seconds"]
+        )[:10]
+
+        metrics_by_printer = defaultdict(list)
+
+        for metric in metrics:
+
+            created_at = as_utc(metric.created_at)
+
+            if created_at is None:
+
+                continue
+
+            metrics_by_printer[metric.printer_id].append({
+                "printer_id": metric.printer_id,
+                "toner_percent": metric.toner_percent,
+                "image_unit_percent": metric.image_unit_percent,
+                "pages": metric.pages,
+                "status": metric.status,
+                "created_at": created_at,
+            })
+
+        availability_rows = []
+
+        for printer_id, printer_metrics in metrics_by_printer.items():
+
+            reliability_metrics = [
+                metric
+                for metric in printer_metrics
+                if metric["created_at"] >= reliability_start
+            ]
+
+            if not reliability_metrics:
+
+                continue
+
+            online_samples = sum(
+                1
+                for metric in reliability_metrics
+                if metric["status"] == "online"
+            )
+
+            total_samples = len(reliability_metrics)
+
+            availability_rows.append({
+                "printer_id": printer_id,
+                "printer": printer_names.get(printer_id, "Unknown"),
+                "availability_percent": round((online_samples / total_samples) * 100, 2),
+                "samples": total_samples,
+            })
+
+        availability = sorted(
+            availability_rows,
+            key=lambda row: row["availability_percent"]
+        )[:10]
+
+        toner_risk = []
+
+        image_unit_risk = []
+
+        monthly_consumption_map = defaultdict(
+            lambda: {
+                "month": "",
+                "toner": 0.0,
+                "image_unit": 0.0,
+            }
+        )
+
+        volume_7 = 0
+
+        volume_30 = 0
+
+        volume_90 = 0
+
+        current_page_volume = 0
+
+        previous_page_volume = 0
+
+        pages_by_printer = defaultdict(int)
+
+        peak_hours = {
+            hour: 0
+            for hour in range(24)
+        }
+
+        last_7_start = now - timedelta(days=7)
+
+        last_30_start = now - timedelta(days=30)
+
+        previous_30_start = now - timedelta(days=60)
+
+        for printer_id, printer_metrics in metrics_by_printer.items():
+
+            if not printer_metrics:
+
+                continue
+
+            latest_metric = printer_metrics[-1]
+
+            first_metric = printer_metrics[0]
+
+            elapsed_days = max(
+                (
+                    latest_metric["created_at"] - first_metric["created_at"]
+                ).total_seconds() / 86400,
+                1.0
+            )
+
+            toner_consumed = 0.0
+
+            image_unit_consumed = 0.0
+
+            for index in range(1, len(printer_metrics)):
+
+                previous = printer_metrics[index - 1]
+
+                current = printer_metrics[index]
+
+                page_delta = valid_page_delta(
+                    previous["pages"],
+                    current["pages"],
+                    previous["created_at"],
+                    current["created_at"]
+                )
+
+                created_at = current["created_at"]
+
+                if created_at >= last_7_start:
+
+                    volume_7 += page_delta
+
+                if created_at >= last_30_start:
+
+                    volume_30 += page_delta
+
+                    current_page_volume += page_delta
+
+                    pages_by_printer[printer_id] += page_delta
+
+                    peak_hours[created_at.hour] += page_delta
+
+                elif created_at >= previous_30_start:
+
+                    previous_page_volume += page_delta
+
+                volume_90 += page_delta
+
+                toner_drop = positive_drop(
+                    previous["toner_percent"],
+                    current["toner_percent"]
+                )
+
+                image_unit_drop = positive_drop(
+                    previous["image_unit_percent"],
+                    current["image_unit_percent"]
+                )
+
+                toner_consumed += toner_drop
+
+                image_unit_consumed += image_unit_drop
+
+                month_key = created_at.strftime("%Y-%m")
+
+                monthly_consumption_map[month_key]["month"] = month_key
+
+                monthly_consumption_map[month_key]["toner"] += toner_drop
+
+                monthly_consumption_map[month_key]["image_unit"] += image_unit_drop
+
+            toner_rate = toner_consumed / elapsed_days
+
+            image_unit_rate = image_unit_consumed / elapsed_days
+
+            current_toner = latest_metric["toner_percent"]
+
+            current_image_unit = latest_metric["image_unit_percent"]
+
+            toner_risk.append({
+                "printer_id": printer_id,
+                "printer": printer_names.get(printer_id, "Unknown"),
+                "current_percent": current_toner,
+                "predicted_depletion_days": (
+                    round(current_toner / toner_rate, 1)
+                    if current_toner is not None and toner_rate > 0
+                    else None
+                ),
+                "daily_consumption_rate": round(toner_rate, 3),
+            })
+
+            image_unit_risk.append({
+                "printer_id": printer_id,
+                "printer": printer_names.get(printer_id, "Unknown"),
+                "current_percent": current_image_unit,
+                "predicted_depletion_days": (
+                    round(current_image_unit / image_unit_rate, 1)
+                    if current_image_unit is not None and image_unit_rate > 0
+                    else None
+                ),
+                "daily_consumption_rate": round(image_unit_rate, 3),
+            })
+
+        def risk_sort_key(row):
+
+            depletion_days = row["predicted_depletion_days"]
+
+            return (
+                depletion_days is None,
+                depletion_days if depletion_days is not None else math.inf,
+                row["current_percent"] if row["current_percent"] is not None else math.inf,
+            )
+
+        toner_risk = sorted(
+            toner_risk,
+            key=risk_sort_key
+        )[:10]
+
+        image_unit_risk = sorted(
+            image_unit_risk,
+            key=risk_sort_key
+        )[:10]
+
+        monthly_consumption = [
+            {
+                "month": value["month"],
+                "toner": round(value["toner"], 2),
+                "image_unit": round(value["image_unit"], 2),
+            }
+            for value in monthly_consumption_map.values()
+        ]
+
+        monthly_consumption = sorted(
+            monthly_consumption,
+            key=lambda row: row["month"]
+        )
+
+        most_used = [
+            {
+                "printer_id": printer_id,
+                "printer": printer_names.get(printer_id, "Unknown"),
+                "pages_printed": pages_printed,
+            }
+            for printer_id, pages_printed in sorted(
+                (
+                    (printer_id, pages_printed)
+                    for printer_id, pages_printed in pages_by_printer.items()
+                    if pages_printed > 0
+                ),
+                key=lambda item: item[1],
+                reverse=True
+            )[:10]
+        ]
+
+        return {
+            "generated_at": now.isoformat(),
+            "windows": {
+                "reliability_days": 30,
+                "consumables_days": 90,
+                "capacity_days": 90,
+            },
+            "reliability": {
+                "top_problematic": top_problematic,
+                "mttr": mttr,
+                "mtbf": mtbf,
+                "availability": availability,
+            },
+            "consumables": {
+                "toner_risk": toner_risk,
+                "image_unit_risk": image_unit_risk,
+                "monthly_consumption": monthly_consumption,
+            },
+            "capacity": {
+                "print_volume": {
+                    "days_7": volume_7,
+                    "days_30": volume_30,
+                    "days_90": volume_90,
+                },
+                "most_used": most_used,
+                "peak_hours": [
+                    {
+                        "hour": hour,
+                        "pages_printed": peak_hours[hour],
+                    }
+                    for hour in range(24)
+                ],
+                "growth": {
+                    "page_volume_percent": percent_growth(
+                        current_page_volume,
+                        previous_page_volume
+                    ),
+                    "incident_percent": percent_growth(
+                        current_incidents,
+                        previous_incidents
+                    ),
+                },
+            },
+        }
+
+    finally:
+
+        db.close()
+
+
 # =========================
 # TIMELINE
 # =========================

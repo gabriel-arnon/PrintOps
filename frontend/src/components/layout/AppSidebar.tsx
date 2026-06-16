@@ -23,6 +23,7 @@ const mainItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard, enabled: true },
   { title: "System Health", url: "/system-health", icon: Activity, enabled: true },
   { title: "Alert Center", url: "/alert-center", icon: Bell, enabled: true, badgeKey: "alerts" },
+  { title: "Analytics", url: "/analytics", icon: BarChart3, enabled: true },
   { title: "Impressoras", url: "/printers", icon: Printer, enabled: false },
   { title: "Relatórios", url: "/reports", icon: BarChart3, enabled: false },
 ] as const;
