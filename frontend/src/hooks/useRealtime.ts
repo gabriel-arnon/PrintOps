@@ -17,83 +17,108 @@ type RealtimeEvent = {
   severity?: EventSeverity;
 };
 
+function getRealtimeUrl(): string {
+  const base = ((import.meta.env.VITE_API_URL as string | undefined) ?? "")
+    .trim()
+    .replace(/\/+$/, "");
+  if (!base) return "ws://localhost:8000/ws";
+  const wsBase = base.replace(/^http:/i, "ws:").replace(/^https:/i, "wss:");
+  if (/\/ws$/.test(wsBase)) return wsBase;
+  return `${wsBase}/ws`;
+}
+
 export function useRealtime() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
     initializeSoundAlerts();
 
-    const ws = new WebSocket("ws://192.168.5.65:8000/ws");
+    let ws: WebSocket | null = null;
+    let retryTimeout: ReturnType<typeof setTimeout> | undefined;
+    let closed = false;
 
-    ws.onopen = () => {
-      console.log("Realtime connected");
+    const connect = () => {
+      if (closed) return;
 
-      toast.success("Realtime connected");
-    };
+      ws = new WebSocket(getRealtimeUrl());
 
-    ws.onmessage = (event) => {
-      let data: RealtimeEvent;
+      ws.onopen = () => {
+        console.log("Realtime connected");
 
-      try {
-        data = JSON.parse(event.data) as RealtimeEvent;
-      } catch {
-        return;
-      }
+        toast.success("Realtime connected");
+      };
 
-      const message = data.message ?? "Realtime event received";
+      ws.onmessage = (event) => {
+        let data: RealtimeEvent;
 
-      if (data.type === "printer_offline") {
-        playOfflineAlert();
+        try {
+          data = JSON.parse(event.data) as RealtimeEvent;
+        } catch {
+          return;
+        }
 
-        toast.error(message, {
-          description: "Incident detected",
-          duration: 10000,
+        const message = data.message ?? "Realtime event received";
+
+        if (data.type === "printer_offline") {
+          playOfflineAlert();
+
+          toast.error(message, {
+            description: "Incident detected",
+            duration: 10000,
+          });
+        }
+
+        if (data.type === "printer_recovered") {
+          playRecoveryAlert();
+
+          toast.success(message, {
+            description: "Printer recovered",
+            duration: 6000,
+          });
+        }
+
+        console.log("Realtime event", data);
+
+        queryClient.setQueryData<TimelineEvent[]>(["timeline"], (current) => {
+          const realtimeEvent = makeRealtimeTimelineEvent(data);
+          return mergeEventCollections(current, [realtimeEvent], TIMELINE_EVENT_LIMIT);
         });
-      }
 
-      if (data.type === "printer_recovered") {
-        playRecoveryAlert();
-
-        toast.success(message, {
-          description: "Printer recovered",
-          duration: 6000,
+        queryClient.invalidateQueries({
+          queryKey: ["active-incidents"],
         });
-      }
 
-      console.log("Realtime event", data);
+        queryClient.invalidateQueries({
+          queryKey: ["incident-summary"],
+        });
 
-      queryClient.setQueryData<TimelineEvent[]>(["timeline"], (current) => {
-        const realtimeEvent = makeRealtimeTimelineEvent(data);
-        return mergeEventCollections(current, [realtimeEvent], TIMELINE_EVENT_LIMIT);
-      });
+        queryClient.invalidateQueries({
+          queryKey: ["dashboard"],
+        });
 
-      queryClient.invalidateQueries({
-        queryKey: ["active-incidents"],
-      });
+        queryClient.invalidateQueries({
+          queryKey: ["printer"],
+        });
 
-      queryClient.invalidateQueries({
-        queryKey: ["incident-summary"],
-      });
+        queryClient.invalidateQueries({
+          queryKey: ["system-health"],
+        });
+      };
 
-      queryClient.invalidateQueries({
-        queryKey: ["dashboard"],
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["printer"],
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: ["system-health"],
-      });
+      ws.onclose = () => {
+        console.log("Realtime disconnected");
+        if (!closed) {
+          retryTimeout = setTimeout(connect, 3000);
+        }
+      };
     };
 
-    ws.onclose = () => {
-      console.log("Realtime disconnected");
-    };
+    connect();
 
     return () => {
-      ws.close();
+      closed = true;
+      if (retryTimeout) clearTimeout(retryTimeout);
+      ws?.close();
     };
   }, [queryClient]);
 }
